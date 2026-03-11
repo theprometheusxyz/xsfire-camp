@@ -1,6 +1,6 @@
 {
-  "name": "@haegyung/xsfire-camp",
-  "version": "0.9.16",
+  "name": "@theprometheusxyz/xsfire-camp",
+  "version": "0.9.17",
   "type": "module",
   "description": "ACP IDE bridge for Codex CLI with structured tool/plan/approval session logs; currently Codex-only, targeting multi-LLM and multi-CLI backends.",
   "license": "CC-BY-NC-SA-4.0",
@@ -28,11 +28,11 @@
     "bin"
   ],
   "optionalDependencies": {
-    "@haegyung/xsfire-camp-darwin-arm64": "0.9.16",
-    "@haegyung/xsfire-camp-darwin-x64": "0.9.16",
-    "@haegyung/xsfire-camp-linux-arm64": "0.9.16",
-    "@haegyung/xsfire-camp-linux-x64": "0.9.16",
-    "@haegyung/xsfire-camp-win32-arm64": "0.9.16",
-    "@haegyung/xsfire-camp-win32-x64": "0.9.16"
+    "@theprometheusxyz/xsfire-camp-darwin-arm64": "0.9.17",
+    "@theprometheusxyz/xsfire-camp-darwin-x64": "0.9.17",
+    "@theprometheusxyz/xsfire-camp-linux-arm64": "0.9.17",
+    "@theprometheusxyz/xsfire-camp-linux-x64": "0.9.17",
+    "@theprometheusxyz/xsfire-camp-win32-arm64": "0.9.17",
+    "@theprometheusxyz/xsfire-camp-win32-x64": "0.9.17"
   }
 }

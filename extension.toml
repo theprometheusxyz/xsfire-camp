@@ -1,6 +1,6 @@
 id = "xsfire-camp"
 name = "xsfire-camp"
-version = "0.9.15"
+version = "0.9.17"
 schema_version = 1
 authors = ["haegyung"]
 description = "ACP IDE bridge for Codex CLI sessions with structured tool/plan/approval logs; Codex-only now, designed for multi-backend CLI expansion."
@@ -11,31 +11,31 @@ name = "xsfire-camp"
 icon = "icons/xsfire-camp.svg"
 
 [agent_servers.xsfire_camp.targets.darwin-aarch64]
-archive = "https://github.com/theprometheusxyz/xsfire-camp/releases/download/v0.9.15/xsfire-camp-0.9.15-aarch64-apple-darwin.tar.gz"
-sha256 = "2f8db50ef283e580e68e59381878e983f5b062f662f4d87d0d39c2fbf9300c4a"
+archive = "https://github.com/theprometheusxyz/xsfire-camp/releases/download/v0.9.17/xsfire-camp-0.9.17-aarch64-apple-darwin.tar.gz"
+sha256 = "7783adeb4d3e44d1b801af63740d9169192a5542c4c1cea9d15856e6c838bba7"
 cmd = "./xsfire-camp"
 
 [agent_servers.xsfire_camp.targets.darwin-x86_64]
-archive = "https://github.com/theprometheusxyz/xsfire-camp/releases/download/v0.9.15/xsfire-camp-0.9.15-x86_64-apple-darwin.tar.gz"
-sha256 = "c47d7752c3305834a9998653f068c26096e41374551120756ce54e94072c83f9"
+archive = "https://github.com/theprometheusxyz/xsfire-camp/releases/download/v0.9.17/xsfire-camp-0.9.17-x86_64-apple-darwin.tar.gz"
+sha256 = "027044b5f546a59edbdfe5669ed19852a217d6f3e90edabcddf1487cd4f79e56"
 cmd = "./xsfire-camp"
 
 [agent_servers.xsfire_camp.targets.linux-x86_64]
-archive = "https://github.com/theprometheusxyz/xsfire-camp/releases/download/v0.9.15/xsfire-camp-0.9.15-x86_64-unknown-linux-gnu.tar.gz"
-sha256 = "e871fdf700309cb661251515570a2d1abd071821b5df7cb827b25ac560934904"
+archive = "https://github.com/theprometheusxyz/xsfire-camp/releases/download/v0.9.17/xsfire-camp-0.9.17-x86_64-unknown-linux-gnu.tar.gz"
+sha256 = "7eacaebee91760eeaa1c2b12a5bdbf634453b96143eba4fe4034b4764ad82d92"
 cmd = "./xsfire-camp"
 
 [agent_servers.xsfire_camp.targets.linux-aarch64]
-archive = "https://github.com/theprometheusxyz/xsfire-camp/releases/download/v0.9.15/xsfire-camp-0.9.15-aarch64-unknown-linux-gnu.tar.gz"
-sha256 = "fc26f576d0f4725a79ebca243b4a75a7c51b94e040c1c3db3ce01afc2a553af8"
+archive = "https://github.com/theprometheusxyz/xsfire-camp/releases/download/v0.9.17/xsfire-camp-0.9.17-aarch64-unknown-linux-gnu.tar.gz"
+sha256 = "bd3ff3e0b8c97cb9c7365b5679cb9362eeb8b3ba0e2ceaa3b5789e361ebe0cbb"
 cmd = "./xsfire-camp"
 
 [agent_servers.xsfire_camp.targets.windows-x86_64]
-archive = "https://github.com/theprometheusxyz/xsfire-camp/releases/download/v0.9.15/xsfire-camp-0.9.15-x86_64-pc-windows-msvc.zip"
-sha256 = "2ca50bf746bec0fecf01a3690820da4e2a5ed7c3d75bb0537f01f06639c41bb1"
+archive = "https://github.com/theprometheusxyz/xsfire-camp/releases/download/v0.9.17/xsfire-camp-0.9.17-x86_64-pc-windows-msvc.zip"
+sha256 = "3f1fc3cea27c2263e873324d577976c19a5c31ded8a1afc6aa953fe409edb70d"
 cmd = "xsfire-camp.exe"
 
 [agent_servers.xsfire_camp.targets.windows-aarch64]
-archive = "https://github.com/theprometheusxyz/xsfire-camp/releases/download/v0.9.15/xsfire-camp-0.9.15-aarch64-pc-windows-msvc.zip"
-sha256 = "1d294a9ca784aba08f5896291770a0614071f80e5e450a5d3b47a1a114a0d111"
+archive = "https://github.com/theprometheusxyz/xsfire-camp/releases/download/v0.9.17/xsfire-camp-0.9.17-aarch64-pc-windows-msvc.zip"
+sha256 = "5acfc7563d7658a470c8ef28cf9ef9878e9ec7fae8f61f7d264c30c68462f281"
 cmd = "xsfire-camp.exe"
