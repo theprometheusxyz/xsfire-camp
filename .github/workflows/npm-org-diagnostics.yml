@@ -67,3 +67,32 @@ jobs:
           echo
           echo "== npm view @theprometheusxyz/xsfire-camp-darwin-arm64 =="
           npm view @theprometheusxyz/xsfire-camp-darwin-arm64 --json || true
+
+      - name: Set release package visibility to public when needed
+        run: |
+          packages=(
+            "@theprometheusxyz/xsfire-camp-darwin-arm64"
+            "@theprometheusxyz/xsfire-camp-darwin-x64"
+            "@theprometheusxyz/xsfire-camp-linux-arm64"
+            "@theprometheusxyz/xsfire-camp-linux-x64"
+            "@theprometheusxyz/xsfire-camp-win32-arm64"
+            "@theprometheusxyz/xsfire-camp-win32-x64"
+            "@theprometheusxyz/xsfire-camp"
+          )
+
+          for pkg in "${packages[@]}"; do
+            echo "== status before: ${pkg} =="
+            before="$(npm access get status "$pkg" 2>&1 || true)"
+            printf '%s\n' "$before"
+
+            if printf '%s\n' "$before" | grep -q ": private"; then
+              echo "Switching ${pkg} to public..."
+              npm access set status=public "$pkg"
+            else
+              echo "No status change attempted for ${pkg}."
+            fi
+
+            echo "== status after: ${pkg} =="
+            npm access get status "$pkg" || true
+            echo
+          done
