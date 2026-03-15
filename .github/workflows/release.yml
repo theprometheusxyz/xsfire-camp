@@ -346,6 +346,15 @@ jobs:
           NPM_CONFIG_USERCONFIG="${NPM_CONFIG_USERCONFIG:-$HOME/.npmrc}"
           unset NODE_AUTH_TOKEN
 
+          write_npmrc() {
+            local auth_token="$1"
+            {
+              echo "registry=https://registry.npmjs.org/"
+              echo "${NPM_PUBLISH_OIDC_SCOPE}:registry=https://registry.npmjs.org/"
+              echo "//registry.npmjs.org/:_authToken=${auth_token}"
+            } > "${NPM_CONFIG_USERCONFIG}"
+          }
+
           # Prefer OIDC when enabled; fall back to NPM_TOKEN.
           NPM_OIDC_PUBLISH_ENABLED=0
           case "${NPM_OIDC_PUBLISH,,}" in
@@ -360,21 +369,13 @@ jobs:
               exit 1
             fi
 
-            {
-              echo "registry=https://registry.npmjs.org/"
-              echo "${NPM_PUBLISH_OIDC_SCOPE}:registry=https://registry.npmjs.org/"
-              echo "//registry.npmjs.org/:_authToken=${NPM_OIDC_AUTH_TOKEN}"
-            } > "${NPM_CONFIG_USERCONFIG}"
+            write_npmrc "${NPM_OIDC_AUTH_TOKEN}"
             echo "OIDC publish is enabled; using NPM_OIDC_AUTH_TOKEN from resolved OIDC token step."
             echo "Using GitHub OIDC trusted publishing (npm provenance) for scope ${NPM_PUBLISH_OIDC_SCOPE} + ${NPM_PUBLISH_OIDC_REPO}."
             PUBLISH_ARGS="--access public --provenance"
             USING_OIDC=1
           elif [ -n "${NPM_TOKEN:-}" ]; then
-            {
-              echo "registry=https://registry.npmjs.org/"
-              echo "${NPM_PUBLISH_OIDC_SCOPE}:registry=https://registry.npmjs.org/"
-              echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}"
-            } > "${NPM_CONFIG_USERCONFIG}"
+            write_npmrc "${NPM_TOKEN}"
             echo "Using NPM_TOKEN for authentication."
             PUBLISH_ARGS="--access public --provenance"
             USING_OIDC=0
@@ -405,7 +406,27 @@ jobs:
                 :
               else
                 PUBLISH_RESULT=$?
-                if [ "$USING_OIDC" -eq 1 ]; then
+                if [ "$USING_OIDC" -eq 1 ] && [ -n "${NPM_TOKEN:-}" ]; then
+                  echo "Trusted publishing failed for $(basename "$pkg"). Retrying once with NPM_TOKEN."
+                  write_npmrc "${NPM_TOKEN}"
+                  if npm whoami >/tmp/npm-whoami-platform-fallback.log 2>&1; then
+                    echo "Fallback authentication confirmed as $(cat /tmp/npm-whoami-platform-fallback.log)."
+                  else
+                    echo "NPM_TOKEN fallback authentication check failed."
+                    cat /tmp/npm-whoami-platform-fallback.log
+                    cat /tmp/npm-publish-platform.log 2>/dev/null || true
+                    exit 1
+                  fi
+                  if npm publish $PUBLISH_ARGS 2> /tmp/npm-publish-platform-fallback.log; then
+                    echo "NPM_TOKEN fallback publish succeeded for $(basename "$pkg")."
+                    cd ../..
+                    continue
+                  fi
+                  echo "Trusted publishing failed for $(basename "$pkg"), and NPM_TOKEN fallback also failed."
+                  cat /tmp/npm-publish-platform.log 2>/dev/null || true
+                  cat /tmp/npm-publish-platform-fallback.log 2>/dev/null || true
+                  exit 1
+                elif [ "$USING_OIDC" -eq 1 ]; then
                   echo "Trusted publishing failed for $(basename "$pkg")."
                   echo "1) Verify scope '${NPM_PUBLISH_OIDC_SCOPE}' is configured as a trusted publisher for repository '${NPM_PUBLISH_OIDC_REPO}' in npm."
                   echo "2) Confirm this workflow has 'id-token: write' permission and uses npm >= 9.5."
@@ -547,6 +568,15 @@ jobs:
           NPM_CONFIG_USERCONFIG="${NPM_CONFIG_USERCONFIG:-$HOME/.npmrc}"
           unset NODE_AUTH_TOKEN
 
+          write_npmrc() {
+            local auth_token="$1"
+            {
+              echo "registry=https://registry.npmjs.org/"
+              echo "${NPM_PUBLISH_OIDC_SCOPE}:registry=https://registry.npmjs.org/"
+              echo "//registry.npmjs.org/:_authToken=${auth_token}"
+            } > "${NPM_CONFIG_USERCONFIG}"
+          }
+
           NPM_OIDC_PUBLISH_ENABLED=0
           case "${NPM_OIDC_PUBLISH,,}" in
             1|true|yes|on)
@@ -560,21 +590,13 @@ jobs:
               exit 1
             fi
 
-            {
-              echo "registry=https://registry.npmjs.org/"
-              echo "${NPM_PUBLISH_OIDC_SCOPE}:registry=https://registry.npmjs.org/"
-              echo "//registry.npmjs.org/:_authToken=${NPM_OIDC_AUTH_TOKEN}"
-            } > "${NPM_CONFIG_USERCONFIG}"
+            write_npmrc "${NPM_OIDC_AUTH_TOKEN}"
             echo "OIDC publish is enabled; using NPM_OIDC_AUTH_TOKEN from resolved OIDC token step."
             echo "Using GitHub OIDC trusted publishing (npm provenance) for scope ${NPM_PUBLISH_OIDC_SCOPE} + ${NPM_PUBLISH_OIDC_REPO}."
             PUBLISH_ARGS="--access public --provenance"
             USING_OIDC=1
           elif [ -n "${NPM_TOKEN:-}" ]; then
-            {
-              echo "registry=https://registry.npmjs.org/"
-              echo "${NPM_PUBLISH_OIDC_SCOPE}:registry=https://registry.npmjs.org/"
-              echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}"
-            } > "${NPM_CONFIG_USERCONFIG}"
+            write_npmrc "${NPM_TOKEN}"
             echo "Using NPM_TOKEN for authentication."
             PUBLISH_ARGS="--access public --provenance"
             USING_OIDC=0
@@ -599,7 +621,26 @@ jobs:
             :
           else
             PUBLISH_RESULT=$?
-            if [ "$USING_OIDC" -eq 1 ]; then
+            if [ "$USING_OIDC" -eq 1 ] && [ -n "${NPM_TOKEN:-}" ]; then
+              echo "Trusted publishing failed for base package. Retrying once with NPM_TOKEN."
+              write_npmrc "${NPM_TOKEN}"
+              if npm whoami >/tmp/npm-whoami-base-fallback.log 2>&1; then
+                echo "Fallback authentication confirmed as $(cat /tmp/npm-whoami-base-fallback.log)."
+              else
+                echo "NPM_TOKEN fallback authentication check failed."
+                cat /tmp/npm-whoami-base-fallback.log
+                cat /tmp/npm-publish-base.log 2>/dev/null || true
+                exit 1
+              fi
+              if npm publish $PUBLISH_ARGS 2> /tmp/npm-publish-base-fallback.log; then
+                echo "NPM_TOKEN fallback publish succeeded for the base package."
+                exit 0
+              fi
+              echo "Trusted publishing failed for the base package, and NPM_TOKEN fallback also failed."
+              cat /tmp/npm-publish-base.log 2>/dev/null || true
+              cat /tmp/npm-publish-base-fallback.log 2>/dev/null || true
+              exit 1
+            elif [ "$USING_OIDC" -eq 1 ]; then
               echo "Trusted publishing failed for base package."
               echo "1) Verify scope '${NPM_PUBLISH_OIDC_SCOPE}' is configured as a trusted publisher for repository '${NPM_PUBLISH_OIDC_REPO}' in npm."
               echo "2) Confirm this workflow has 'id-token: write' permission and uses npm >= 9.5."
