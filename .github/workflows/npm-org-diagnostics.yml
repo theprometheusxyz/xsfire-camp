@@ -1,6 +1,9 @@
 name: NPM Org Diagnostics
 
 on:
+  push:
+    branches:
+      - codex/npm-org-diagnostics
   workflow_dispatch:
 
 permissions:
