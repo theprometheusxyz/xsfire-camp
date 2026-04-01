@@ -1025,6 +1025,7 @@ printf '%s\n' 'fake gemini output'
         );
     }
 
+    #[allow(clippy::await_holding_lock)]
     #[tokio::test(flavor = "current_thread")]
     async fn authenticate_rejects_missing_auth_configuration() {
         let _guard = crate::session_store::ENV_LOCK
@@ -1045,6 +1046,7 @@ printf '%s\n' 'fake gemini output'
         assert!(message.contains("GEMINI_API_KEY"));
     }
 
+    #[allow(clippy::await_holding_lock)]
     #[tokio::test(flavor = "current_thread")]
     async fn authenticate_accepts_gemini_api_key_env() {
         let _guard = crate::session_store::ENV_LOCK
@@ -1063,6 +1065,7 @@ printf '%s\n' 'fake gemini output'
         assert!(response.is_ok());
     }
 
+    #[allow(clippy::await_holding_lock)]
     #[tokio::test(flavor = "current_thread")]
     async fn authenticate_requires_oauth_credentials_file() {
         let _guard = crate::session_store::ENV_LOCK
@@ -1083,6 +1086,7 @@ printf '%s\n' 'fake gemini output'
         assert!(message.contains("oauth_creds.json"));
     }
 
+    #[allow(clippy::await_holding_lock)]
     #[tokio::test(flavor = "current_thread")]
     async fn authenticate_accepts_oauth_credentials_file() {
         let _guard = crate::session_store::ENV_LOCK
@@ -1100,6 +1104,7 @@ printf '%s\n' 'fake gemini output'
         assert!(response.is_ok());
     }
 
+    #[allow(clippy::await_holding_lock)]
     #[tokio::test(flavor = "current_thread")]
     async fn authenticate_accepts_vertex_ai_env() {
         let _guard = crate::session_store::ENV_LOCK
@@ -1118,6 +1123,7 @@ printf '%s\n' 'fake gemini output'
         assert!(response.is_ok());
     }
 
+    #[allow(clippy::await_holding_lock)]
     #[tokio::test(flavor = "current_thread")]
     async fn authenticate_rejects_enforced_auth_mismatch() {
         let _guard = crate::session_store::ENV_LOCK
@@ -1139,6 +1145,7 @@ printf '%s\n' 'fake gemini output'
         assert!(message.contains("resolved `vertex-ai`"));
     }
 
+    #[allow(clippy::await_holding_lock)]
     #[tokio::test(flavor = "current_thread")]
     async fn authenticate_prefers_selected_type_over_env() {
         let _guard = crate::session_store::ENV_LOCK
@@ -1182,6 +1189,7 @@ printf '%s\n' 'fake gemini output'
             .to_string()
     }
 
+    #[allow(clippy::await_holding_lock)]
     #[tokio::test(flavor = "current_thread")]
     async fn cancel_stops_running_prompt() {
         let _guard = crate::session_store::ENV_LOCK
@@ -1277,9 +1285,11 @@ printf '%s\n' 'fake gemini output'
             .await
             .unwrap();
 
-        let sessions = driver.sessions.borrow();
-        let session = sessions.get(&session_id).unwrap();
-        assert_eq!(session.model.as_deref(), Some("gemini-2.5-flash"));
+        {
+            let sessions = driver.sessions.borrow();
+            let session = sessions.get(&session_id).unwrap();
+            assert_eq!(session.model.as_deref(), Some("gemini-2.5-flash"));
+        }
         let selected_model = response
             .config_options
             .iter()
@@ -1289,7 +1299,6 @@ printf '%s\n' 'fake gemini output'
                 _ => panic!("model config option should be a select"),
             });
         assert_eq!(selected_model.as_deref(), Some("gemini-2.5-flash"));
-        drop(sessions);
 
         let error = driver
             .set_session_config_option(SetSessionConfigOptionRequest::new(

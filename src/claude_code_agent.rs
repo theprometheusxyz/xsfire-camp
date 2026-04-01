@@ -701,6 +701,7 @@ printf '%s\n' 'fake claude output'
         );
     }
 
+    #[allow(clippy::await_holding_lock)]
     #[tokio::test(flavor = "current_thread")]
     async fn authenticate_checks_claude_status() {
         let _guard = crate::session_store::ENV_LOCK
@@ -716,6 +717,7 @@ printf '%s\n' 'fake claude output'
         assert!(response.is_ok());
     }
 
+    #[allow(clippy::await_holding_lock)]
     #[tokio::test(flavor = "current_thread")]
     async fn cancel_stops_running_prompt() {
         let _guard = crate::session_store::ENV_LOCK
@@ -811,9 +813,11 @@ printf '%s\n' 'fake claude output'
             .await
             .unwrap();
 
-        let sessions = driver.sessions.borrow();
-        let session = sessions.get(&session_id).unwrap();
-        assert_eq!(session.model.as_deref(), Some("claude-3-5-haiku"));
+        {
+            let sessions = driver.sessions.borrow();
+            let session = sessions.get(&session_id).unwrap();
+            assert_eq!(session.model.as_deref(), Some("claude-3-5-haiku"));
+        }
         let selected_model = response
             .config_options
             .iter()
@@ -823,7 +827,6 @@ printf '%s\n' 'fake claude output'
                 _ => panic!("model config option should be a select"),
             });
         assert_eq!(selected_model.as_deref(), Some("claude-3-5-haiku"));
-        drop(sessions);
 
         let error = driver
             .set_session_config_option(SetSessionConfigOptionRequest::new(

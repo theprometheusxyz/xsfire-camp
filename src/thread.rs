@@ -332,7 +332,7 @@ impl RuntimeDiagnosticsSnapshot {
             .map(format_bytes)
             .unwrap_or_else(|| "unavailable".to_string());
         let client_info = self.client_info.as_deref().unwrap_or("unknown");
-        let lines = vec![
+        let lines = [
             format!(
                 "ACP client: {client_info} | visibility={} | uptime={}s | active_tasks={}",
                 self.ui_visibility_mode, self.uptime_secs, self.active_tasks
@@ -522,7 +522,7 @@ fn current_process_rss_bytes() -> Option<u64> {
         }
         let stdout = String::from_utf8(output.stdout).ok()?;
         let rss_kib = stdout.trim().parse::<u64>().ok()?;
-        return Some(rss_kib.saturating_mul(1024));
+        Some(rss_kib.saturating_mul(1024))
     }
 
     #[cfg(not(unix))]
@@ -7811,6 +7811,7 @@ mod tests {
         Ok(())
     }
 
+    #[allow(clippy::await_holding_lock)]
     #[tokio::test]
     async fn test_monitor_detail_command_includes_runtime_diagnostics() -> anyhow::Result<()> {
         let _guard = crate::session_store::ENV_LOCK
@@ -8646,6 +8647,7 @@ mod tests {
         Ok(())
     }
 
+    #[allow(clippy::await_holding_lock)]
     #[tokio::test]
     async fn test_setup_emits_zed_plan_progress_summary() -> anyhow::Result<()> {
         let _guard = crate::session_store::ENV_LOCK
@@ -8716,6 +8718,7 @@ mod tests {
         result
     }
 
+    #[allow(clippy::await_holding_lock)]
     #[tokio::test]
     async fn test_setup_does_not_emit_plan_progress_summary_for_non_zed_client()
     -> anyhow::Result<()> {

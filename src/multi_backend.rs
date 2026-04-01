@@ -29,6 +29,30 @@ struct RoutedSession {
     meta: Option<agent_client_protocol::Meta>,
 }
 
+impl RoutedSession {
+    fn single_backend(
+        active_backend: BackendKind,
+        child_session_id: SessionId,
+        child_config_options: Vec<SessionConfigOption>,
+        cwd: std::path::PathBuf,
+        mcp_servers: Vec<agent_client_protocol::McpServer>,
+        meta: Option<agent_client_protocol::Meta>,
+    ) -> Self {
+        let mut backend_sessions = HashMap::new();
+        backend_sessions.insert(active_backend, child_session_id);
+        let mut backend_config_options = HashMap::new();
+        backend_config_options.insert(active_backend, child_config_options);
+        Self {
+            active_backend,
+            backend_sessions,
+            backend_config_options,
+            cwd,
+            mcp_servers,
+            meta,
+        }
+    }
+}
+
 pub struct MultiBackendDriver {
     codex: Rc<dyn BackendDriver>,
     claude: Rc<dyn BackendDriver>,
@@ -236,32 +260,17 @@ impl MultiBackendDriver {
             .collect()
     }
 
-    fn register_routed_session(
-        &self,
-        session_id: SessionId,
-        active_backend: BackendKind,
-        child_session_id: SessionId,
-        child_config_options: Vec<SessionConfigOption>,
-        cwd: std::path::PathBuf,
-        mcp_servers: Vec<agent_client_protocol::McpServer>,
-        meta: Option<agent_client_protocol::Meta>,
-    ) {
-        let mut backend_sessions = HashMap::new();
-        backend_sessions.insert(active_backend, child_session_id.clone());
-        let mut backend_config_options = HashMap::new();
-        backend_config_options.insert(active_backend, child_config_options);
-        self.sessions.borrow_mut().insert(
-            session_id.clone(),
-            RoutedSession {
-                active_backend,
-                backend_sessions,
-                backend_config_options,
-                cwd,
-                mcp_servers,
-                meta,
-            },
-        );
-        register_session_alias(&child_session_id, &session_id);
+    fn register_routed_session(&self, session_id: SessionId, routed_session: RoutedSession) {
+        let child_session_id = routed_session
+            .backend_sessions
+            .get(&routed_session.active_backend)
+            .cloned();
+        self.sessions
+            .borrow_mut()
+            .insert(session_id.clone(), routed_session);
+        if let Some(child_session_id) = child_session_id {
+            register_session_alias(&child_session_id, &session_id);
+        }
     }
 
     fn codex_backing_session_for(
@@ -347,12 +356,14 @@ impl BackendDriver for MultiBackendDriver {
 
         self.register_routed_session(
             routed_session_id.clone(),
-            backend,
-            child_session_id,
-            child_backend_options.clone(),
-            request.cwd,
-            request.mcp_servers,
-            request.meta,
+            RoutedSession::single_backend(
+                backend,
+                child_session_id,
+                child_backend_options.clone(),
+                request.cwd,
+                request.mcp_servers,
+                request.meta,
+            ),
         );
 
         let mut response = NewSessionResponse::new(routed_session_id);
@@ -370,12 +381,14 @@ impl BackendDriver for MultiBackendDriver {
         let mut response = self.codex.load_session(request.clone()).await?;
         self.register_routed_session(
             request.session_id.clone(),
-            BackendKind::Codex,
-            request.session_id.clone(),
-            response.config_options.clone().unwrap_or_default(),
-            request.cwd,
-            request.mcp_servers,
-            request.meta,
+            RoutedSession::single_backend(
+                BackendKind::Codex,
+                request.session_id.clone(),
+                response.config_options.clone().unwrap_or_default(),
+                request.cwd,
+                request.mcp_servers,
+                request.meta,
+            ),
         );
         response.config_options = Some(Self::with_backend_option(
             response.config_options,
@@ -409,12 +422,14 @@ impl BackendDriver for MultiBackendDriver {
         let child_backend_options = child_response.config_options.clone().unwrap_or_default();
         self.register_routed_session(
             routed_session_id.clone(),
-            BackendKind::Codex,
-            child_session_id,
-            child_backend_options.clone(),
-            cwd,
-            mcp_servers,
-            meta,
+            RoutedSession::single_backend(
+                BackendKind::Codex,
+                child_session_id,
+                child_backend_options.clone(),
+                cwd,
+                mcp_servers,
+                meta,
+            ),
         );
 
         Ok(ForkSessionResponse::new(routed_session_id)
@@ -450,12 +465,14 @@ impl BackendDriver for MultiBackendDriver {
         let child_backend_options = child_response.config_options.clone().unwrap_or_default();
         self.register_routed_session(
             session_id,
-            BackendKind::Codex,
-            child_session_id,
-            child_backend_options.clone(),
-            cwd,
-            mcp_servers,
-            meta,
+            RoutedSession::single_backend(
+                BackendKind::Codex,
+                child_session_id,
+                child_backend_options.clone(),
+                cwd,
+                mcp_servers,
+                meta,
+            ),
         );
 
         Ok(ResumeSessionResponse::new()

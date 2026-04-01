@@ -125,34 +125,6 @@ impl AcpUnifiedExecDelegate {
             .and_then(|status| status.exit_code)
             .and_then(|code| i32::try_from(code).ok())
     }
-
-    fn unified_exec_response(
-        request_process_id: &str,
-        request_command: &[String],
-        request_workdir: &Option<PathBuf>,
-        context: &UnifiedExecContext,
-        terminal_id: &str,
-        output: String,
-        exit_status: &Option<agent_client_protocol::TerminalExitStatus>,
-        still_running: bool,
-    ) -> UnifiedExecResponse {
-        let raw_output = output.as_bytes().to_vec();
-        UnifiedExecResponse {
-            event_call_id: context.call_id().to_string(),
-            chunk_id: Uuid::new_v4().to_string(),
-            wall_time: std::time::Duration::from_millis(0),
-            output,
-            raw_output,
-            process_id: still_running.then(|| request_process_id.to_string()),
-            exit_code: Self::exit_code_from_terminal_status(exit_status),
-            original_token_count: None,
-            terminal_id: Some(terminal_id.to_string()),
-            session_command: Some(request_command.to_vec()),
-            session_cwd: request_workdir
-                .clone()
-                .or_else(|| Some(context.cwd().to_path_buf())),
-        }
-    }
 }
 
 #[async_trait::async_trait]
@@ -205,16 +177,25 @@ impl UnifiedExecDelegate for AcpUnifiedExecDelegate {
             .map_err(|err| UnifiedExecError::create_process(err.to_string()))?;
         }
 
-        Ok(Self::unified_exec_response(
-            &request.process_id,
-            &request.command,
-            &request.workdir,
-            context,
-            &terminal_id,
-            output_response.output,
-            &output_response.exit_status,
-            still_running,
-        ))
+        let output = output_response.output;
+        let raw_output = output.as_bytes().to_vec();
+        let exit_status = output_response.exit_status;
+        Ok(UnifiedExecResponse {
+            event_call_id: context.call_id().to_string(),
+            chunk_id: Uuid::new_v4().to_string(),
+            wall_time: std::time::Duration::from_millis(0),
+            output,
+            raw_output,
+            process_id: still_running.then(|| request.process_id.clone()),
+            exit_code: Self::exit_code_from_terminal_status(&exit_status),
+            original_token_count: None,
+            terminal_id: Some(terminal_id),
+            session_command: Some(request.command.clone()),
+            session_cwd: request
+                .workdir
+                .clone()
+                .or_else(|| Some(context.cwd().to_path_buf())),
+        })
     }
 
     async fn write_stdin(
@@ -252,16 +233,22 @@ impl UnifiedExecDelegate for AcpUnifiedExecDelegate {
             .map_err(|err| UnifiedExecError::create_process(err.to_string()))?;
         }
 
-        Ok(Self::unified_exec_response(
-            &request.process_id,
-            &[],
-            &None,
-            context,
-            &handle.terminal_id,
-            output_response.output,
-            &output_response.exit_status,
-            still_running,
-        ))
+        let output = output_response.output;
+        let raw_output = output.as_bytes().to_vec();
+        let exit_status = output_response.exit_status;
+        Ok(UnifiedExecResponse {
+            event_call_id: context.call_id().to_string(),
+            chunk_id: Uuid::new_v4().to_string(),
+            wall_time: std::time::Duration::from_millis(0),
+            output,
+            raw_output,
+            process_id: still_running.then(|| request.process_id.clone()),
+            exit_code: Self::exit_code_from_terminal_status(&exit_status),
+            original_token_count: None,
+            terminal_id: Some(handle.terminal_id),
+            session_command: Some(Vec::new()),
+            session_cwd: Some(context.cwd().to_path_buf()),
+        })
     }
 
     async fn terminate_all_processes(&self) -> Result<(), UnifiedExecError> {
