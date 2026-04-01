@@ -34,6 +34,9 @@
 
 ## quality/
 - [qa_checklist.md](quality/qa_checklist.md): QA 체크리스트
+- [cross_environment_execution_protocol.md](quality/cross_environment_execution_protocol.md): Goal/Rubric/Iteration 고정 실행 프로토콜
+- [iteration_fit_template.md](quality/iteration_fit_template.md): fit_score, Context-Fit, Release/Feedback 반복 기록 템플릿
+- [iteration_fit_v0.9.24_acp_readiness.md](quality/iteration_fit_v0.9.24_acp_readiness.md): `v0.9.24` ACP readiness concrete fit record
 - [verification_guidance.md](quality/verification_guidance.md): 로컬/수동 검증 가이드
 - [serena_workflow.md](serena_workflow.md): Serena 기반 팀 작업 루프/품질 게이트 운영 가이드
 

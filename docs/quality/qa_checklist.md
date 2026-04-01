@@ -2,6 +2,10 @@
 
 Use this checklist before tagging/publishing the extension release.
 
+Current `v0.9.24` evidence record:
+- `docs/quality/iteration_fit_v0.9.24_acp_readiness.md`
+- `docs/releases/release_notes_v0.9.24.md`
+
 1. **Documentation**
    - [x] `docs/zed/install_shared_settings.md` describes shared `CODEX_HOME` usage.
    - [x] `docs/reference/event_handling.md` maps CLI events to ACP notifications.
@@ -11,14 +15,14 @@ Use this checklist before tagging/publishing the extension release.
    - [x] `cargo test` (unit tests and event coverage) passes locally.
    - [x] `TaskState` delegates to `PromptState` to reuse event handling.
 3. **Sequential Release Fitness (X/X')**
-   - [ ] `fit_score`, `Context-Fit` decision, and `Release / Feedback` are recorded in `docs/quality/iteration_fit_template.md`.
-   - [ ] Core invariants (`X`: safety, correctness, traceability, operability) remain retained in release candidate `X'`.
-   - [ ] `X'` growth trend is documented: added value signals and resolved weak points.
+   - [x] `fit_score`, `Context-Fit` decision, and `Release / Feedback` are recorded in a release-specific fit record derived from `docs/quality/iteration_fit_template.md`.
+   - [x] Core invariants (`X`: safety, correctness, traceability, operability) remain retained in release candidate `X'`.
+   - [x] `X'` growth trend is documented: added value signals and resolved weak points.
 4. **ACP registry-specific**
    - [x] `extension.toml` references live `vX.Y.Z` binaries for darwin/linux/windows targets with `sha256`.
    - [x] `docs/guides/github_registry_release_runbook.md` is updated and linked from `README.md` and `docs/README.md`.
-   - [ ] ACP registry PR status/check snapshot is captured (`gh pr view` + `gh pr checks`) and attached to release evidence.
-   - [ ] Any ACP registry PR comment is written in English only and includes run/check evidence.
+   - [x] ACP registry PR status/check snapshot is captured (`gh pr view` + `gh pr checks`) and attached to release evidence.
+   - [x] Any ACP registry PR comment is written in English only and includes run/check evidence.
    - [x] `docs/zed/extensions_toml_sample.md` and `docs/zed/zed_extension_pr_template.md` are marked as legacy reference docs.
 5. **Release Artifacts**
    - [x] Cargo version and release tag are consistent (`Cargo.toml` = `X.Y.Z`, tag = `vX.Y.Z`).
@@ -34,17 +38,17 @@ Use this checklist before tagging/publishing the extension release.
    - [ ] (Optional) Verify canonical log under `ACP_HOME` (default `~/.acp`) is created and appends `canonical.jsonl`.
    - [ ] Confirm Zed agent panel (if available) shows plan/tool call updates as expected.
 7. **ACP compatibility (based on `docs/reference/acp_standard_spec.md`)**
-   - [ ] Run `scripts/acp_compat_smoke.sh --strict` and archive the generated report under `logs/smoke/`.
-   - [ ] If strict mode fails, attach the corresponding failure log from `logs/smoke/logs/*.log` to the release issue/PR.
+   - [x] Run `scripts/acp_compat_smoke.sh --strict` and archive the generated report under `logs/smoke/`.
+   - [x] If strict mode fails, attach the corresponding failure log from `logs/smoke/logs/*.log` to the release issue/PR; otherwise record `N/A (strict pass)` in the release evidence.
    - [ ] `initialize` returns `protocolVersion=v1` and advertises capability contract (`embeddedContext=true`, `image=true`, `audio=false`, `mcp.http=true`, `mcp.sse=false`, `session.list=true`).
    - [ ] `codex` backend passes core ACP flow: `authenticate` -> `session/new|load` -> repeated `session/prompt` -> `session/cancel` and returns valid JSON-RPC 2.0 envelopes.
-   - [ ] `claude-code`/`gemini` backends keep declared behavior: `authenticate` validates declared CLI readiness (`claude auth status` / Gemini auth configuration); `session/load` returns `invalid_params`; `session/set_model` is supported; `session/set_mode` returns `invalid_params`; `session/set_config_option` supports model changes and rejects unsupported options; `session/cancel` stops an active CLI prompt and yields `cancelled`.
+   - [x] `claude-code`/`gemini` backends keep declared behavior: `authenticate` validates declared CLI readiness (`claude auth status` / Gemini auth configuration); `session/load` returns `invalid_params`; `session/set_model` is supported; `session/set_mode` returns `invalid_params`; `session/set_config_option` supports model changes and rejects unsupported options; `session/cancel` stops an active CLI prompt and yields `cancelled`.
    - [ ] `session/update` stream includes expected update types (`AgentMessageChunk`, `AgentThoughtChunk`, `ToolCall`, `ToolCallUpdate`, `Plan`, `AvailableCommandsUpdate`, `CurrentModeUpdate`) without schema violations.
    - [ ] `ToolCall`/`Plan` status transitions stay in allowed enums (`pending`, `in_progress`, `completed`, `failed`) and do not regress state order during one turn.
-   - [ ] `session/request_permission` round-trip is recorded with request/response pair in canonical logs when `ACP_HOME` logging is enabled.
+   - [x] `session/request_permission` round-trip is recorded with request/response pair in canonical logs when `ACP_HOME` logging is enabled.
    - [ ] `fs/*` capability path enforces session-root boundary checks and falls back to local FS access only when ACP FS capability is not advertised.
-   - [ ] Terminal integration behavior is documented and smoke-tested: `codex` exec uses ACP `terminal/create -> terminal/output -> terminal/release` with `terminal/kill -> terminal/wait_for_exit` on cancellation, clients opting into legacy `_meta.terminal_output` receive embedded terminal updates, and plain-text fallback is used only when no real `terminal_id` is available.
-   - [ ] `session/list`, `session/set_model`, `session/set_config_option`, `session/fork`, `session/resume` (unstable) are smoke-tested against current schema versions and tracked as release risk if behavior changes. `codex` should support `session/fork` and `session/resume`; `multi` should verify wrapped codex cursors (`multi:codex:*`), deferred routed cursor (`multi:routed`), and that `session/fork|resume` only work for codex-backed sessions.
+   - [x] Terminal integration behavior is documented and smoke-tested: `codex` exec uses ACP `terminal/create -> terminal/output -> terminal/release` with `terminal/kill -> terminal/wait_for_exit` on cancellation, clients opting into legacy `_meta.terminal_output` receive embedded terminal updates, and plain-text fallback is used only when no real `terminal_id` is available.
+   - [x] `session/list`, `session/set_model`, `session/set_config_option`, `session/fork`, `session/resume` (unstable) are smoke-tested against current schema versions and tracked as release risk if behavior changes. `codex` should support `session/fork` and `session/resume`; `multi` should verify wrapped codex cursors (`multi:codex:*`), deferred routed cursor (`multi:routed`), and that `session/fork|resume` only work for codex-backed sessions.
 
 Mark each step when complete and keep the checklist with the release notes for traceability.
 

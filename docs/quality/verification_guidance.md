@@ -14,8 +14,7 @@
 
 참고 문서:
 - `docs/quality/cross_environment_execution_protocol.md`
-- 반복 기록 템플릿:
-- `docs/quality/iteration_fit_template.md`
+- 반복 기록 템플릿: `docs/quality/iteration_fit_template.md`
 
 ## 0. 사전 준비
 
