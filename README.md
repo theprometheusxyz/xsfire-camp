@@ -1,279 +1,131 @@
-# xsfire-camp
+# 🔥 xsfire-camp — 내 컴퓨터의 모든 AI를 IDE와 연결하는 통합 ACP 브리지
 
-ACP(Agent Client Protocol) 클라이언트에서 Codex, Claude Code, Gemini를 실행형 에이전트로 라우팅하는 통합 브리지입니다.
+> **"내 맥북에 이미 설치되어 있는 Gemini, Codex, Claude를 Zed 같은 IDE에서 바로 불러와 사용할 수는 없을까?"**
+>
+> **`xsfire-camp`는 복잡한 인증이나 복잡한 환경 설정 없이, 내 컴퓨터에 이미 세팅된 AI 도구들을 알아서 탐지하고 IDE와 하나로 묶어주는 초경량 ACP(Agent Client Protocol) 통합 엔진입니다.**
 
-`xsfire-camp` lets ACP-compatible clients (for example Zed) run Codex CLI, Claude Code CLI, and Gemini CLI as execution-first agent sessions.
+---
 
-- ACP: https://agentclientprotocol.com/
-- Codex: https://github.com/openai/codex
-- Project purpose: keep session continuity across IDE and CLI with structured logs and approval flow
+## 🌟 왜 xsfire-camp 인가요? (핵심 장점 3가지)
 
-## Quick Start (60 sec)
-
-1. Build
-```bash
-cargo build --release
+```
+                       ┌─────────────────────────┐
+                       │   Zed IDE / ACP Client  │
+                       └────────────┬────────────┘
+                                    │ (ACP Stdio)
+                       ┌────────────▼────────────┐
+                       │       xsfire-camp       │
+                       │ (Local-First Discovery) │
+                       └─────┬──────┬──────┬─────┘
+                             │      │      │
+           ┌─────────────────┘      │      └─────────────────┐
+           ▼                        ▼                        ▼
+┌──────────────────┐     ┌──────────────────┐     ┌──────────────────┐
+│    Gemini CLI    │     │    Codex CLI     │     │ Claude Code CLI  │
+│ (/opt/homebrew)  │     │  (ChatGPT Engine)│     │  (Anthropic CLI) │
+└──────────────────┘     └──────────────────┘     └──────────────────┘
 ```
 
-2. Run
-```bash
-OPENAI_API_KEY=... CODEX_HOME="$HOME/.codex" target/release/xsfire-camp
-```
+### 1. ⚡ 로컬 AI 무인증 자동 연결 (Zero-Setup Auth-Less Binding)
+별도의 API 키 복사-붙여넣기나 팝업 창 승인 없이, **내 컴퓨터에 이미 세팅해 둔 AI 도구들(`/opt/homebrew/bin/gemini`, `codex`, `claude`)을 알아서 인식하여 즉시 연결**합니다.
 
-3. Optional: multi-backend mode
-```bash
-target/release/xsfire-camp --backend=multi
-```
+### 2. 🔀 대화창에서 명령 한 줄로 AI 엔진 자유 교체
+Zed나 에디터 대화창에서 `/backend gemini` 또는 `/backend codex`를 입력하는 것만으로, 맥락을 유지한 채 내가 원하는 AI 엔진으로 즉시 스위칭하여 답변을 비교하고 작업을 이어갈 수 있습니다.
 
-4. Verify
-```bash
-cargo test
-```
+### 3. 🛡️ 안전한 작업 기록과 언제든 가능한 타임트래블
+모든 AI의 코드 수정 내역과 명령어 실행 로그를 내 컴퓨터(`~/.acp`)에 안전하게 저장합니다. 실수가 발생하면 언제든 `/undo`로 되돌리거나 `/compact`로 긴 대화를 요약해 문맥을 정리할 수 있습니다.
 
-## Who This Is For
+---
 
-- ACP client users who want stable Codex behavior independent of client adapter changes
-- Teams that need traceable tool/plan/approval logs for review and safety
-- Operators who want to preserve context across terminal and IDE sessions
+## 🚀 60초 초간단 시작하기 (Quick Start)
 
-## Prerequisites
+### 1단계: 설치하기 (원하는 방식을 고르세요)
 
-| Item | Required | Notes |
-| --- | --- | --- |
-| Rust toolchain | Yes (build from source) | For `cargo build --release` |
-| ACP client (example: Zed) | Yes | Must support stdio ACP agent |
-| Auth (`OPENAI_API_KEY` or `CODEX_API_KEY`) | Yes (Codex backend) | Depends on backend/auth route |
-| `CODEX_HOME` | Recommended | Session/thread continuity root |
-| `ACP_HOME` | Optional | Canonical ACP log root (default `~/.acp`) |
-
-## Run Modes
+#### 💡 [방법 A] 가장 추천: 명령어 한 줄로 자동 설치
+터미널을 열고 아래 명령어를 붙여넣으면 즉시 설치됩니다.
 
 ```bash
-target/release/xsfire-camp --backend=codex
-target/release/xsfire-camp --backend=claude-code
-target/release/xsfire-camp --backend=gemini
-target/release/xsfire-camp --backend=multi
+curl -fsSL https://raw.githubusercontent.com/theprometheusxyz/xsfire-camp/main/scripts/build_and_install.sh | bash
 ```
 
-Notes:
-- `claude-code` and `gemini` backends require their CLIs to be installed and authenticated.
-- In `multi` mode, switch backend in-thread: `/backend codex|claude-code|gemini`.
-- Backend-specific overrides:
-  - `XSFIRE_CODEX_OPEN_BROWSER=1` to let ACP-triggered ChatGPT login try opening your browser automatically
-  - `XSFIRE_CLAUDE_BIN`, `XSFIRE_CLAUDE_ARGS`
-  - `XSFIRE_GEMINI_BIN`, `XSFIRE_GEMINI_ARGS`, `XSFIRE_GEMINI_APPROVAL_MODE`
+#### 📦 [방법 B] NPM으로 설치하기
+Node.js가 설치되어 있다면 NPM으로 편리하게 글로벌 설치할 수 있습니다.
 
-## Common Commands Snapshot
+```bash
+npm install -g @theprometheusxyz/xsfire-camp@latest
+```
 
-| Category | Commands |
-| --- | --- |
-| Core | `/setup`, `/review`, `/review-branch`, `/review-commit`, `/compact`, `/undo`, `/init`, `/status` |
-| Session | `/sessions`, `/load` |
-| Integrations | `/mcp`, `/skills` |
-| Monitoring | `/monitor`, `/monitor retro`, `/vector`, `/experimental` |
-| UX | `/new-window` |
+---
 
-## 현재 보유 기능 목록
+### 2단계: Zed IDE에 등록하기
 
-### 핵심 런타임
-- ACP(Agent Client Protocol) V1 호환 어댑터로 ACP 클라이언트와 stdio 기반으로 동작한다.
-- 멀티 백엔드 모드(`codex`, `claude-code`, `gemini`, `multi`)를 지원한다.
-- 멀티 모드에서는 세션 단위 라우팅과 `/backend <backend>` 동적 전환이 가능하다.
-
-### 세션 연속성 및 운영
-- 새 세션 생성, 이어가기, 포크(`fork`), 동기화/요약(`compact`), 되돌리기(`undo`)를 지원한다.
-- 세션/이벤트 로그를 Canonical 스토어에 영속화하고, 백엔드별 식별자 매핑을 통해 재로드를 지원한다.
-- 세션 진행은 `/status`, `/monitor`, `/monitor retro`, `/vector`, `/new-window`로 점검한다.
-
-### 승인/도구 실행 제어
-- 툴 호출 전 사용자 승인 흐름(`approvals`)과 이벤트(`permission`/`tool`/`plan`/`thought`) 로깅을 제공한다.
-- 위험 동작/명령에 대한 사전 확인이 가능한 실행 우선 정책을 유지한다.
-
-### 내장 명령어 커버리지
-- 핵심: `/setup`, `/model`, `/personality`, `/approvals`, `/permissions`, `/status`
-- 세션: `/new`, `/resume`, `/fork`, `/diff`, `/load`, `/sessions`, `/undo`, `/compact`
-- 운영/검토: `/feedback`, `/review`, `/review-branch`, `/review-commit`, `/init`, `/logout`
-- 통합: `/mcp`, `/skills`, `/mention`, `/vector`, `/monitor`, `/experimental`
-
-### 백엔드/외부 통합
-- `codex` 백엔드는 인증/세션/리스트/로드/모드·모델·옵션 제어가 포함된 완전 모드에 가깝다.
-- `claude-code`, `gemini` 백엔드는 CLI 연동형으로 동작하며 백엔드별 제약이 있는 경량 모드이다.
-- 커스텀 프롬프트(`prompts`) 로딩을 지원하고 `prompts:` 접두사 동적 명령을 사용할 수 있다.
-
-### 배포·개발 지원
-- `cargo build --release` 와 `cargo test` 가 기본 검증 라인이다.
-- `build_and_install.sh`, `acp_compat_smoke.sh`, `tag_release.sh`로 빌드/릴리스 운영 루틴이 갖춰져 있다.
-- `extension.toml` 기반 Zed 연동과 GitHub release binary 배포 채널을 유지한다.
-
-## Current Feature Inventory
-
-### Core runtime
-- Operates as an ACP (Agent Client Protocol) V1-compatible adapter over stdio.
-- Supports multi-backend execution (`codex`, `claude-code`, `gemini`, `multi`).
-- Allows in-session backend switching via `/backend <backend>` in multi mode.
-
-### Session continuity and operations
-- Supports creating, resuming, forking, compacting, and undoing sessions.
-- Persists session/event logs in canonical storage and remaps backend identifiers for reload.
-- Uses `/status`, `/monitor`, `/monitor retro`, `/vector`, and `/new-window` for runtime visibility.
-
-### Approval and tool execution control
-- Supports pre-execution approval flow and logs events such as permission, tool, plan, and thought updates.
-- Keeps risky actions gated by explicit user confirmation.
-
-### Built-in command coverage
-- Core: `/setup`, `/model`, `/personality`, `/approvals`, `/permissions`, `/status`
-- Session: `/new`, `/resume`, `/fork`, `/diff`, `/load`, `/sessions`, `/undo`, `/compact`
-- Review/ops: `/feedback`, `/review`, `/review-branch`, `/review-commit`, `/init`, `/logout`
-- Integrations: `/mcp`, `/skills`, `/mention`, `/vector`, `/monitor`, `/experimental`
-
-### Backend and external integration
-- `codex` is the most complete backend with authentication, session, model, mode, and option controls.
-- `claude-code` and `gemini` are CLI-bridged lightweight modes with different session capabilities.
-- Supports dynamic custom prompts through prompt loading and `prompts:` command prefixes.
-
-### Delivery and development support
-- Core verification commands remain: `cargo build --release` and `cargo test`.
-- Build/deploy scripts include `build_and_install.sh`, `acp_compat_smoke.sh`, and `tag_release.sh`.
-- Keeps Zed and GitHub release binary distribution aligned through `extension.toml` and release metadata.
-
-## Release Notes (3-line summary)
-
-### 한글
-1. ACP stdio 적응기 기반으로 멀티 백엔드 라우팅과 세션 연속성 로그를 제공합니다.
-2. 승인/도구 실행 가드와 핵심 `/setup /review /compact /undo /monitor /status` 계열 명령을 강화했습니다.
-3. Zed/ACP 배포 경로(확장 매니페스트·GitHub release binary)를 기반으로 릴리스/운영 루틴을 정비했습니다.
-
-### English
-1. Provides ACP stdio-first execution with multi-backend routing and persistent session continuity logs.
-2. Tightens approval-first tool execution with core workflow commands across setup, review, session, and monitoring.
-3. Aligns release and distribution flow with Zed extension manifests and GitHub release binaries.
-
-## Client Integration
-
-### Zed custom agent registration
-
-`settings.json` example:
+1. Zed IDE를 실행하고 **`Cmd + ,`** 키를 눌러 설정(`settings.json`)을 엽니다.
+2. 아래 내용을 복사해서 `"agent_servers"` 항목에 추가하세요:
 
 ```json
 {
   "agent_servers": {
     "xsfire-camp": {
       "type": "custom",
-      "command": "/absolute/path/to/xsfire-camp",
-      "env": {
-        "CODEX_HOME": "/Users/you/.codex"
-      }
+      "command": "xsfire-camp",
+      "args": ["--backend=multi"]
     }
   }
 }
 ```
 
-### VS Code notes
+---
 
-This repository does not ship a VS Code ACP extension. Use a VS Code ACP client extension that can run a stdio custom agent.
+### 3단계: 바로 사용해보기!
 
-Compatibility note:
+1. Zed 우측의 AI 패널을 열고 에이전트 목록에서 **`xsfire-camp`**를 선택합니다.
+2. 대화창에 인사나 질문을 입력해 보세요.
+3. 다른 AI 엔진으로 바꾸고 싶다면 대화창에 아래 슬래시 커맨드를 입력하세요:
+   - `/backend gemini` ➔ **Gemini AI로 전환**
+   - `/backend codex` ➔ **Codex / ChatGPT 엔진으로 전환**
+   - `/backend claude-code` ➔ **Claude Code 엔진으로 전환**
 
-```bash
-xsfire-camp acp
-```
+---
 
-If the client resolves agents from `PATH`, install from the release binary and expose it directly:
+## 🎮 자주 쓰는 유용한 슬래시 커맨드 모음
 
-```bash
-install -m 0755 target/release/xsfire-camp /usr/local/bin/xsfire-camp
-```
+대화창에서 아래 명령어들을 입력해 AI 작업을 손쉽게 제어하세요:
 
-## ACP Registry Notes
+| 카테고리 | 슬래시 커맨드 | 어떤 기능인가요? |
+| :--- | :--- | :--- |
+| **엔진 전환** | `/backend <engine>` | `gemini`, `codex`, `claude-code` 중 사용할 AI를 실시간 교체합니다. |
+| **작업 검토** | `/review` | AI가 새로 작성하거나 수정한 코드 변경사항 전체를 정밀 리뷰합니다. |
+| **브랜치 리뷰** | `/review-branch` | 현재 Git 브랜치와 메인 브랜치 간의 변경점을 비교 검토합니다. |
+| **대화 정리** | `/compact` | 길어진 대화 내역을 간결하게 요약하여 메모리와 응답 속도를 최적화합니다. |
+| **작업 취소** | `/undo` | AI가 실행한 이전 작업을 안전하게 취소하고 이전 상태로 복원합니다. |
+| **상태 확인** | `/status` | 현재 연결된 AI 백엔드와 세션 상태, 처리 지표를 점검합니다. |
+| **세션 관리** | `/sessions`, `/load` | 저장된 이전 대화 목록을 확인하고 원하는 세션을 다시 불러옵니다. |
 
-- The ACP registry entry installs `xsfire-camp` from GitHub release binaries, not from the npm package.
-- `codex` is the most complete backend for ACP use. It carries the full `xsfire-camp` auth/session/tool-plan flow.
-- `claude-code` and `gemini` are lightweight CLI bridges. Registry install only provides `xsfire-camp` itself; you still need the upstream CLI installed and authenticated on the local machine.
-- If your ACP client expects one self-contained agent binary with no extra local setup, prefer the `codex` backend.
+---
 
-## Troubleshooting (Top 5)
+## 🛠️ 자주 묻는 질문 (FAQ & Troubleshooting)
 
-1. Auth error on startup
-- Check `OPENAI_API_KEY` or `CODEX_API_KEY` is set for Codex backend.
-- If you already ran `codex login`, point both CLI and ACP to the same `CODEX_HOME`; `xsfire-camp` will reuse the saved credentials.
-- ChatGPT login from ACP prints a localhost auth URL to stderr. Browser auto-open is disabled by default to avoid macOS app-open failures; set `XSFIRE_CODEX_OPEN_BROWSER=1` only if you want ACP to try launching the browser itself.
-- For headless or SSH workflows, set `NO_BROWSER=1` and use an API key auth method instead.
+<details>
+<summary><b>Q1. 로컬에 Gemini CLI가 설치되어 있는지 어떻게 확인하나요?</b></summary>
+<br>
+터미널에서 <code>gemini --version</code>을 실행해 보세요. 만약 설치되어 있지 않다면 Homebrew로 쉽게 설치할 수 있습니다:
+<pre><code>brew install gemini-cli</code></pre>
+</details>
 
-2. Sessions not shared between CLI and ACP client
-- Ensure both run with the same `CODEX_HOME`.
+<details>
+<summary><b>Q2. API 키를 따로 입력하지 않아도 되나요?</b></summary>
+<br>
+네! 내 터미널에서 이미 <code>gemini</code>, <code>codex</code>, <code>claude</code> 명령어를 사용할 수 있는 상태라면, <code>xsfire-camp</code>가 로컬 자격증명을 자동으로 사용하므로 추가 인증 입력이 필요하지 않습니다.
+</details>
 
-3. Backend switch fails
-- Confirm target backend CLI (`claude`/`gemini`) is installed and authenticated.
+<details>
+<summary><b>Q3. 지원되는 OS 환경은 무엇인가요?</b></summary>
+<br>
+macOS (Apple Silicon 및 Intel), Linux (x86_64 및 ARM64), Windows (x64 및 ARM64) 등 거의 모든 6대 주요 플랫폼을 완벽하게 지원합니다.
+</details>
 
-4. Legacy npm instructions still appear
-- `xsfire-camp` no longer ships through npm. Use the GitHub release binary or ACP registry entry instead.
+---
 
-5. ACP registry entry not visible yet
-- Check ACP registry PR/check status first (`agentclientprotocol/registry`), especially `action_required` workflows that need maintainer intervention. Keep registry PR comments in English and post only evidence-backed updates.
+## 📜 라이선스 및 기여
 
-## Docs Index
-
-### Architecture and backend
-- `docs/backend/backends.md`
-- `docs/backend/session_store.md`
-- `docs/backend/policies.md`
-- `docs/reference/acp_standard_spec.md`
-- `docs/reference/event_handling.md`
-- `docs/reference/codex_home_overview.md`
-
-### Planning and roadmap
-- `docs/plans/roadmap.md`
-- `docs/plans/next_cycle_execution_plan.md`
-- `docs/plans/orchestration_plan_backend_driver_setup_context.md`
-
-### Quality and release
-- `docs/quality/system_requirements_done_criteria.md`
-- `docs/quality/verification_guidance.md`
-- `docs/quality/qa_checklist.md`
-- `docs/guides/github_registry_release_runbook.md`
-- `docs/releases/release_notes_v0.9.24.md`
-- `docs/releases/release_notes_v0.9.23.md`
-- `docs/releases/release_notes_v0.9.22.md`
-- `docs/releases/release_notes_v0.9.21.md`
-- `docs/releases/release_notes_v0.9.20.md`
-- `docs/releases/release_notes_v0.9.19.md`
-- `docs/releases/release_notes_v0.9.18.md`
-- `docs/releases/release_notes_v0.9.17.md`
-- `docs/releases/release_notes_v0.9.16.md`
-- `docs/releases/release_notes_v0.9.15.md`
-- `docs/releases/release_notes_v0.9.14.md`
-- `docs/releases/release_notes_v0.9.13.md`
-- `docs/releases/release_notes_v0.9.12.md`
-- `docs/releases/release_notes_v0.9.11.md`
-- `docs/releases/release_notes_v0.9.10.md`
-- `docs/releases/release_notes_v0.9.8.md`
-
-### ACP/Zed integration
-- `docs/zed/zed_extension_pr_template.md`
-- `docs/zed/extensions_toml_sample.md`
-- `docs/zed/install_shared_settings.md`
-
-## README Update Checklist (for each release)
-
-1. Version strings and examples align with the current release.
-2. Quick Start command flags still match binary behavior.
-3. Verification commands are still valid.
-4. `docs/` links are alive and accurate.
-5. GitHub release binary and ACP registry status text is current.
-6. New release notes link is added.
-
-## English Summary
-
-`xsfire-camp` is an ACP bridge around Codex CLI.
-It focuses on:
-- execution-first sessions instead of plain chat,
-- continuity across IDE and terminal via shared `CODEX_HOME`,
-- traceable tool/plan/approval updates,
-- explicit control gates for risky operations.
-
-If you are new, start from **Quick Start**, then jump to **Docs Index**.
-
-## License
-
-CC BY-NC-SA 4.0. See `LICENSE`.
+`xsfire-camp`는 오픈소스 생태계를 지지합니다. 버그 제보나 기능 제안은 언제든지 [GitHub Issues](https://github.com/theprometheusxyz/xsfire-camp/issues)를 통해 남겨주세요!
