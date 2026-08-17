@@ -1,6 +1,6 @@
 {
   "name": "@theprometheusxyz/xsfire-camp",
-  "version": "0.9.26",
+  "version": "0.9.27",
   "type": "module",
   "description": "ACP IDE bridge for Codex CLI with structured tool/plan/approval session logs; currently Codex-only, targeting multi-LLM and multi-CLI backends.",
   "license": "CC-BY-NC-SA-4.0",
