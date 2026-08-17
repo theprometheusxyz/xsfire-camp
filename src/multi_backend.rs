@@ -1,5 +1,5 @@
 use agent_client_protocol::{
-    AuthMethod, AuthenticateRequest, AuthenticateResponse, CancelNotification, Error,
+    AuthMethod, AuthenticateRequest, AuthenticateResponse, CancelNotification, Client, Error,
     ForkSessionRequest, ForkSessionResponse, ListSessionsRequest, ListSessionsResponse,
     LoadSessionRequest, LoadSessionResponse, NewSessionRequest, NewSessionResponse, PromptRequest,
     PromptResponse, ResumeSessionRequest, ResumeSessionResponse, SessionConfigOption,
@@ -16,7 +16,10 @@ use uuid::Uuid;
 
 use crate::{
     backend::{BackendDriver, BackendKind},
-    cli_common::{prompt_blocks_to_text, send_agent_text},
+    cli_common::{
+        prompt_blocks_to_text, send_agent_text, send_agent_text_via, send_config_options_update,
+        send_config_options_update_via,
+    },
     register_session_alias,
 };
 
@@ -57,6 +60,7 @@ pub struct MultiBackendDriver {
     codex: Rc<dyn BackendDriver>,
     claude: Rc<dyn BackendDriver>,
     gemini: Rc<dyn BackendDriver>,
+    notification_client: Option<Rc<dyn Client>>,
     sessions: RefCell<HashMap<SessionId, RoutedSession>>,
 }
 
@@ -64,17 +68,44 @@ const MULTI_CODEX_CURSOR_PREFIX: &str = "multi:codex:";
 const MULTI_ROUTED_CURSOR: &str = "multi:routed";
 
 impl MultiBackendDriver {
+    fn is_selectable_backend(backend: BackendKind) -> bool {
+        matches!(
+            backend,
+            BackendKind::Codex | BackendKind::ClaudeCode | BackendKind::Gemini
+        )
+    }
+
     pub fn new(
         codex: Rc<dyn BackendDriver>,
         claude: Rc<dyn BackendDriver>,
         gemini: Rc<dyn BackendDriver>,
     ) -> Self {
+        Self::new_inner(codex, claude, gemini, None)
+    }
+
+    fn new_inner(
+        codex: Rc<dyn BackendDriver>,
+        claude: Rc<dyn BackendDriver>,
+        gemini: Rc<dyn BackendDriver>,
+        notification_client: Option<Rc<dyn Client>>,
+    ) -> Self {
         Self {
             codex,
             claude,
             gemini,
+            notification_client,
             sessions: RefCell::new(HashMap::new()),
         }
+    }
+
+    #[cfg(test)]
+    fn with_notification_client(
+        codex: Rc<dyn BackendDriver>,
+        claude: Rc<dyn BackendDriver>,
+        gemini: Rc<dyn BackendDriver>,
+        notification_client: Rc<dyn Client>,
+    ) -> Self {
+        Self::new_inner(codex, claude, gemini, Some(notification_client))
     }
 
     fn default_backend() -> BackendKind {
@@ -101,7 +132,10 @@ impl MultiBackendDriver {
         if cmd != "/backend" {
             return None;
         }
-        parts.next().and_then(BackendKind::parse)
+        parts
+            .next()
+            .and_then(BackendKind::parse)
+            .filter(|backend| Self::is_selectable_backend(*backend))
     }
 
     fn is_switch_backend_command(raw: &str) -> bool {
@@ -163,6 +197,64 @@ impl MultiBackendDriver {
         options.retain(|opt| opt.id.0.as_ref() != "backend");
         options.push(Self::backend_config_option(active_backend));
         options
+    }
+
+    async fn emit_agent_text(&self, session_id: &SessionId, text: impl Into<String>) {
+        if let Some(client) = self.notification_client.as_deref() {
+            send_agent_text_via(client, session_id, text).await;
+        } else {
+            send_agent_text(session_id, text).await;
+        }
+    }
+
+    async fn emit_config_options_update(
+        &self,
+        session_id: &SessionId,
+        config_options: Vec<SessionConfigOption>,
+    ) {
+        if let Some(client) = self.notification_client.as_deref() {
+            send_config_options_update_via(client, session_id, config_options).await;
+        } else {
+            send_config_options_update(session_id, config_options).await;
+        }
+    }
+
+    async fn switch_backend(
+        &self,
+        session_id: &SessionId,
+        target_backend: BackendKind,
+    ) -> Result<Vec<SessionConfigOption>, Error> {
+        if !Self::is_selectable_backend(target_backend) {
+            return Err(
+                Error::invalid_params().data("backend must be one of: codex|claude-code|gemini")
+            );
+        }
+
+        self.ensure_backend_session(session_id, target_backend)
+            .await?;
+        let merged_options = {
+            let sessions = self.sessions.borrow();
+            let Some(session) = sessions.get(session_id) else {
+                return Err(Error::resource_not_found(None));
+            };
+            Self::merge_active_options(
+                target_backend,
+                session
+                    .backend_config_options
+                    .get(&target_backend)
+                    .cloned()
+                    .unwrap_or_default(),
+            )
+        };
+        {
+            let mut sessions = self.sessions.borrow_mut();
+            let Some(session) = sessions.get_mut(session_id) else {
+                return Err(Error::resource_not_found(None));
+            };
+            session.active_backend = target_backend;
+        }
+
+        Ok(merged_options)
     }
 
     async fn ensure_backend_session(
@@ -535,22 +627,17 @@ impl BackendDriver for MultiBackendDriver {
         let prompt_text = prompt_blocks_to_text(&request.prompt);
 
         if let Some(target_backend) = Self::parse_backend_selector(&prompt_text) {
-            self.ensure_backend_session(&session_id, target_backend)
-                .await?;
-            {
-                let mut sessions = self.sessions.borrow_mut();
-                let Some(session) = sessions.get_mut(&session_id) else {
-                    return Err(Error::resource_not_found(None));
-                };
-                session.active_backend = target_backend;
-            }
-
-            send_agent_text(&session_id, Self::backend_switch_message(target_backend)).await;
+            let merged_options = self.switch_backend(&session_id, target_backend).await?;
+            self.emit_agent_text(&session_id, Self::backend_switch_message(target_backend))
+                .await;
+            self.emit_config_options_update(&session_id, merged_options)
+                .await;
             return Ok(PromptResponse::new(StopReason::EndTurn));
         }
 
         if Self::is_switch_backend_command(&prompt_text) {
-            send_agent_text(&session_id, Self::backend_usage_message()).await;
+            self.emit_agent_text(&session_id, Self::backend_usage_message())
+                .await;
             return Ok(PromptResponse::new(StopReason::EndTurn));
         }
 
@@ -612,35 +699,10 @@ impl BackendDriver for MultiBackendDriver {
             let target_backend = BackendKind::parse(args.value.0.as_ref()).ok_or_else(|| {
                 Error::invalid_params().data("backend must be one of: codex|claude-code|gemini")
             })?;
-            if target_backend == BackendKind::Multi {
-                return Err(Error::invalid_params()
-                    .data("backend must be one of: codex|claude-code|gemini"));
-            }
-
-            self.ensure_backend_session(&args.session_id, target_backend)
+            let merged_options = self
+                .switch_backend(&args.session_id, target_backend)
                 .await?;
-            let merged_options = {
-                let sessions = self.sessions.borrow();
-                let Some(session) = sessions.get(&args.session_id) else {
-                    return Err(Error::resource_not_found(None));
-                };
-                Self::merge_active_options(
-                    target_backend,
-                    session
-                        .backend_config_options
-                        .get(&target_backend)
-                        .cloned()
-                        .unwrap_or_default(),
-                )
-            };
-            {
-                let mut sessions = self.sessions.borrow_mut();
-                let Some(session) = sessions.get_mut(&args.session_id) else {
-                    return Err(Error::resource_not_found(None));
-                };
-                session.active_backend = target_backend;
-            }
-            send_agent_text(
+            self.emit_agent_text(
                 &args.session_id,
                 Self::backend_switch_message(target_backend),
             )
@@ -671,15 +733,122 @@ mod tests {
     use super::MultiBackendDriver;
     use crate::backend::{BackendDriver, BackendKind};
     use agent_client_protocol::{
-        AuthMethod, AuthenticateRequest, AuthenticateResponse, CancelNotification, Error,
-        ForkSessionRequest, ForkSessionResponse, ListSessionsRequest, ListSessionsResponse,
-        LoadSessionRequest, LoadSessionResponse, NewSessionRequest, NewSessionResponse,
-        PromptRequest, PromptResponse, ResumeSessionRequest, ResumeSessionResponse,
-        SessionConfigOption, SessionId, SessionInfo, SetSessionConfigOptionRequest,
+        Agent, AgentSideConnection, AuthMethod, AuthenticateRequest, AuthenticateResponse,
+        CancelNotification, Client, ClientSideConnection, ConfigOptionUpdate, ContentBlock, Error,
+        ForkSessionRequest, ForkSessionResponse, Implementation, InitializeRequest,
+        InitializeResponse, ListSessionsRequest, ListSessionsResponse, LoadSessionRequest,
+        LoadSessionResponse, NewSessionRequest, NewSessionResponse, PromptRequest, PromptResponse,
+        RequestPermissionOutcome, RequestPermissionRequest, RequestPermissionResponse,
+        ResumeSessionRequest, ResumeSessionResponse, SessionConfigKind, SessionConfigOption,
+        SessionId, SessionInfo, SessionNotification, SessionUpdate, SetSessionConfigOptionRequest,
         SetSessionConfigOptionResponse, SetSessionModeRequest, SetSessionModeResponse,
         SetSessionModelRequest, SetSessionModelResponse, StopReason,
     };
-    use std::{cell::RefCell, collections::HashMap, path::PathBuf, rc::Rc};
+    use std::{
+        cell::RefCell,
+        collections::HashMap,
+        path::PathBuf,
+        rc::Rc,
+        sync::{Arc, Mutex},
+    };
+
+    #[derive(Clone, Default)]
+    struct RecordingClient {
+        notifications: Arc<Mutex<Vec<SessionNotification>>>,
+    }
+
+    impl RecordingClient {
+        fn notifications(&self) -> Vec<SessionNotification> {
+            self.notifications.lock().unwrap().clone()
+        }
+    }
+
+    #[async_trait::async_trait(?Send)]
+    impl Client for RecordingClient {
+        async fn request_permission(
+            &self,
+            _args: RequestPermissionRequest,
+        ) -> Result<RequestPermissionResponse, Error> {
+            Ok(RequestPermissionResponse::new(
+                RequestPermissionOutcome::Cancelled,
+            ))
+        }
+
+        async fn session_notification(&self, args: SessionNotification) -> Result<(), Error> {
+            self.notifications.lock().unwrap().push(args);
+            Ok(())
+        }
+    }
+
+    #[derive(Clone, Default)]
+    struct NullAgent;
+
+    #[async_trait::async_trait(?Send)]
+    impl Agent for NullAgent {
+        async fn initialize(&self, args: InitializeRequest) -> Result<InitializeResponse, Error> {
+            Ok(InitializeResponse::new(args.protocol_version)
+                .agent_info(Implementation::new("null-agent", "0.0.0").title("Null Agent")))
+        }
+
+        async fn authenticate(
+            &self,
+            _args: AuthenticateRequest,
+        ) -> Result<AuthenticateResponse, Error> {
+            Ok(AuthenticateResponse::new())
+        }
+
+        async fn new_session(&self, _args: NewSessionRequest) -> Result<NewSessionResponse, Error> {
+            Ok(NewSessionResponse::new("null-agent:session"))
+        }
+
+        async fn prompt(&self, _args: PromptRequest) -> Result<PromptResponse, Error> {
+            Ok(PromptResponse::new(StopReason::EndTurn))
+        }
+
+        async fn cancel(&self, _args: CancelNotification) -> Result<(), Error> {
+            Ok(())
+        }
+    }
+
+    fn create_notification_client_connection_pair(
+        client: &RecordingClient,
+    ) -> (ClientSideConnection, AgentSideConnection) {
+        let (client_to_agent_rx, client_to_agent_tx) = piper::pipe(1024);
+        let (agent_to_client_rx, agent_to_client_tx) = piper::pipe(1024);
+
+        let (agent_conn, agent_io_task) = ClientSideConnection::new(
+            client.clone(),
+            client_to_agent_tx,
+            agent_to_client_rx,
+            |fut| {
+                tokio::task::spawn_local(fut);
+            },
+        );
+
+        let (client_conn, client_io_task) =
+            AgentSideConnection::new(NullAgent, agent_to_client_tx, client_to_agent_rx, |fut| {
+                tokio::task::spawn_local(fut);
+            });
+
+        tokio::task::spawn_local(agent_io_task);
+        tokio::task::spawn_local(client_io_task);
+
+        (agent_conn, client_conn)
+    }
+
+    fn config_current_value(options: &[SessionConfigOption], id: &str) -> Option<String> {
+        options.iter().find_map(|option| {
+            if option.id.0.as_ref() != id {
+                return None;
+            }
+
+            match &option.kind {
+                SessionConfigKind::Select(select) => Some(select.current_value.0.to_string()),
+                #[allow(unreachable_patterns)]
+                _ => None,
+            }
+        })
+    }
 
     struct StubDriver {
         backend: BackendKind,
@@ -688,6 +857,7 @@ mod tests {
         supports_load_session: bool,
         supports_fork_session: bool,
         supports_resume_session: bool,
+        new_session_config_options: Vec<SessionConfigOption>,
         fork_response: RefCell<Option<ForkSessionResponse>>,
         resume_response: RefCell<Option<ResumeSessionResponse>>,
         fork_requests: RefCell<Vec<ForkSessionRequest>>,
@@ -707,6 +877,7 @@ mod tests {
                 supports_load_session,
                 supports_fork_session: false,
                 supports_resume_session: false,
+                new_session_config_options: Vec::new(),
                 fork_response: RefCell::new(None),
                 resume_response: RefCell::new(None),
                 fork_requests: RefCell::new(Vec::new()),
@@ -727,11 +898,17 @@ mod tests {
                 supports_load_session,
                 supports_fork_session: false,
                 supports_resume_session: false,
+                new_session_config_options: Vec::new(),
                 fork_response: RefCell::new(None),
                 resume_response: RefCell::new(None),
                 fork_requests: RefCell::new(Vec::new()),
                 resume_requests: RefCell::new(Vec::new()),
             }
+        }
+
+        fn with_new_session_config_options(mut self, options: Vec<SessionConfigOption>) -> Self {
+            self.new_session_config_options = options;
+            self
         }
 
         fn with_fork_response(mut self, response: ForkSessionResponse) -> Self {
@@ -784,7 +961,8 @@ mod tests {
             self.sessions.borrow_mut().push(
                 SessionInfo::new(session_id.clone(), request.cwd).title(self.backend.as_str()),
             );
-            Ok(NewSessionResponse::new(session_id))
+            Ok(NewSessionResponse::new(session_id)
+                .config_options(self.new_session_config_options.clone()))
         }
 
         async fn load_session(
@@ -1161,4 +1339,251 @@ mod tests {
         assert!(message.contains("claude-code: single ACP message chunk only"));
         assert!(message.contains("gemini: single ACP message chunk only"));
     }
+
+    #[test]
+    fn parse_backend_selector_rejects_multi_aliases() {
+        assert_eq!(
+            MultiBackendDriver::parse_backend_selector("/backend multi"),
+            None
+        );
+        assert_eq!(
+            MultiBackendDriver::parse_backend_selector("/backend all"),
+            None
+        );
+    }
+
+    #[tokio::test(flavor = "current_thread")]
+    async fn prompt_backend_multi_keeps_existing_active_backend() {
+        let cwd = PathBuf::from("/tmp/xsfire-camp-test");
+        let driver = MultiBackendDriver::new(
+            Rc::new(StubDriver::new(BackendKind::Codex, Vec::new(), true)),
+            Rc::new(StubDriver::new(BackendKind::ClaudeCode, Vec::new(), false)),
+            Rc::new(StubDriver::new(BackendKind::Gemini, Vec::new(), false)),
+        );
+
+        let created = driver
+            .new_session(NewSessionRequest::new(cwd))
+            .await
+            .unwrap();
+        let session_id = created.session_id;
+
+        let response = driver
+            .prompt(PromptRequest::new(
+                session_id.clone(),
+                vec!["/backend multi".into()],
+            ))
+            .await
+            .unwrap();
+
+        assert_eq!(response.stop_reason, StopReason::EndTurn);
+        let route = driver.sessions.borrow();
+        let stored = route.get(&session_id).unwrap();
+        assert_eq!(stored.active_backend, BackendKind::Codex);
+        assert!(!stored.backend_sessions.contains_key(&BackendKind::Multi));
+    }
+
+    #[tokio::test(flavor = "current_thread")]
+    async fn prompt_backend_switch_emits_agent_message_and_config_option_update() {
+        let local_set = tokio::task::LocalSet::new();
+        local_set
+            .run_until(async {
+                let recording_client = RecordingClient::default();
+                let (_agent_conn, client_conn) =
+                    create_notification_client_connection_pair(&recording_client);
+                let cwd = PathBuf::from("/tmp/xsfire-camp-test");
+                let driver = MultiBackendDriver::with_notification_client(
+                    Rc::new(StubDriver::new(BackendKind::Codex, Vec::new(), true)),
+                    Rc::new(
+                        StubDriver::new(BackendKind::ClaudeCode, Vec::new(), false)
+                            .with_new_session_config_options(vec![SessionConfigOption::select(
+                                "model",
+                                "Model",
+                                "claude-3-7-sonnet",
+                                vec![agent_client_protocol::SessionConfigSelectOption::new(
+                                    "claude-3-7-sonnet",
+                                    "Claude 3.7 Sonnet",
+                                )],
+                            )]),
+                    ),
+                    Rc::new(StubDriver::new(BackendKind::Gemini, Vec::new(), false)),
+                    Rc::new(client_conn),
+                );
+
+                let created = driver
+                    .new_session(NewSessionRequest::new(cwd))
+                    .await
+                    .unwrap();
+                let session_id = created.session_id.clone();
+
+                let response = driver
+                    .prompt(PromptRequest::new(
+                        session_id.clone(),
+                        vec!["/backend claude-code".into()],
+                    ))
+                    .await
+                    .unwrap();
+
+                assert_eq!(response.stop_reason, StopReason::EndTurn);
+                tokio::task::yield_now().await;
+
+                let notifications = recording_client.notifications();
+                assert_eq!(notifications.len(), 2);
+                assert!(notifications.iter().all(|n| n.session_id == session_id));
+
+                let Some(message) = notifications.iter().find_map(|notification| {
+                    let SessionUpdate::AgentMessageChunk(chunk) = &notification.update else {
+                        return None;
+                    };
+                    let ContentBlock::Text(text) = &chunk.content else {
+                        return None;
+                    };
+                    Some(text.text.clone())
+                }) else {
+                    panic!("expected backend switch message. notifications={notifications:?}");
+                };
+                assert!(message.contains("Switched backend to `claude-code`"));
+
+                let Some(ConfigOptionUpdate { config_options, .. }) =
+                    notifications.iter().find_map(|notification| {
+                        let SessionUpdate::ConfigOptionUpdate(update) = &notification.update else {
+                            return None;
+                        };
+                        Some(update.clone())
+                    })
+                else {
+                    panic!("expected config option update. notifications={notifications:?}");
+                };
+
+                assert_eq!(
+                    config_current_value(&config_options, "backend").as_deref(),
+                    Some("claude-code")
+                );
+                assert_eq!(
+                    config_current_value(&config_options, "model").as_deref(),
+                    Some("claude-3-7-sonnet")
+                );
+            })
+            .await;
+    }
+
+    #[tokio::test(flavor = "current_thread")]
+    async fn prompt_backend_multi_emits_usage_without_config_option_update() {
+        let local_set = tokio::task::LocalSet::new();
+        local_set
+            .run_until(async {
+                let recording_client = RecordingClient::default();
+                let (_agent_conn, client_conn) =
+                    create_notification_client_connection_pair(&recording_client);
+                let cwd = PathBuf::from("/tmp/xsfire-camp-test");
+                let driver = MultiBackendDriver::with_notification_client(
+                    Rc::new(StubDriver::new(BackendKind::Codex, Vec::new(), true)),
+                    Rc::new(StubDriver::new(BackendKind::ClaudeCode, Vec::new(), false)),
+                    Rc::new(StubDriver::new(BackendKind::Gemini, Vec::new(), false)),
+                    Rc::new(client_conn),
+                );
+
+                let created = driver
+                    .new_session(NewSessionRequest::new(cwd))
+                    .await
+                    .unwrap();
+                let session_id = created.session_id.clone();
+
+                let response = driver
+                    .prompt(PromptRequest::new(
+                        session_id.clone(),
+                        vec!["/backend multi".into()],
+                    ))
+                    .await
+                    .unwrap();
+
+                assert_eq!(response.stop_reason, StopReason::EndTurn);
+                tokio::task::yield_now().await;
+
+                let notifications = recording_client.notifications();
+                assert_eq!(notifications.len(), 1);
+                assert_eq!(notifications[0].session_id, session_id);
+
+                let SessionUpdate::AgentMessageChunk(chunk) = &notifications[0].update else {
+                    panic!("expected only usage message. notifications={notifications:?}");
+                };
+                let ContentBlock::Text(text) = &chunk.content else {
+                    panic!("expected text usage message. notifications={notifications:?}");
+                };
+                assert!(
+                    text.text
+                        .contains("Usage: /backend <codex|claude-code|gemini>")
+                );
+                assert!(notifications.iter().all(|notification| {
+                    !matches!(notification.update, SessionUpdate::ConfigOptionUpdate(_))
+                }));
+            })
+            .await;
+    }
+
+    #[tokio::test(flavor = "current_thread")]
+    async fn concurrent_multi_backend_session_stress_test() {
+        let local_set = tokio::task::LocalSet::new();
+        local_set
+            .run_until(async {
+                let recording_client = RecordingClient::default();
+                let (_agent_conn, client_conn) =
+                    create_notification_client_connection_pair(&recording_client);
+                let driver = Rc::new(MultiBackendDriver::with_notification_client(
+                    Rc::new(StubDriver::new(BackendKind::Codex, Vec::new(), true)),
+                    Rc::new(StubDriver::new(BackendKind::ClaudeCode, Vec::new(), false)),
+                    Rc::new(StubDriver::new(BackendKind::Gemini, Vec::new(), false)),
+                    Rc::new(client_conn),
+                ));
+
+                let num_concurrent_sessions = 50;
+                let mut futures = Vec::new();
+
+                for i in 0..num_concurrent_sessions {
+                    let d = Rc::clone(&driver);
+                    futures.push(async move {
+                        let cwd = PathBuf::from(format!("/tmp/xsfire-camp-stress-{i}"));
+                        let created = d
+                            .new_session(NewSessionRequest::new(cwd))
+                            .await
+                            .expect("session creation failed");
+                        let sid = created.session_id;
+
+                        // Switch backend to claude-code
+                        let set_resp = d
+                            .set_session_config_option(SetSessionConfigOptionRequest::new(
+                                sid.clone(),
+                                "backend",
+                                "claude-code",
+                            ))
+                            .await
+                            .expect("backend switch failed");
+                        assert_eq!(
+                            config_current_value(&set_resp.config_options, "backend").as_deref(),
+                            Some("claude-code")
+                        );
+
+                        // Prompt session
+                        let prompt_resp = d
+                            .prompt(PromptRequest::new(sid.clone(), vec!["Hello stress test".into()]))
+                            .await
+                            .expect("prompt failed");
+                        assert_eq!(prompt_resp.stop_reason, StopReason::EndTurn);
+
+                        sid
+                    });
+                }
+
+                let session_ids = futures::future::join_all(futures).await;
+                assert_eq!(session_ids.len(), 50);
+
+                // Verify driver session table integrity
+                let active_sessions = driver.sessions.borrow();
+                assert_eq!(active_sessions.len(), 50);
+                for sid in &session_ids {
+                    assert!(active_sessions.contains_key(sid));
+                }
+            })
+            .await;
+    }
 }
+

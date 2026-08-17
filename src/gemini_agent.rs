@@ -968,7 +968,7 @@ if "%1"=="--version" (
   echo gemini fake 1.0
   exit /b 0
 )
-powershell -NoProfile -Command "Start-Sleep -Seconds 10; Write-Output 'fake gemini output'"
+powershell -NoProfile -Command "Start-Sleep -Seconds 2; Write-Output 'fake gemini output'"
 exit /b 0
 "#;
 
@@ -978,8 +978,7 @@ if [ "$1" = "--version" ]; then
   printf '%s\n' 'gemini fake 1.0'
   exit 0
 fi
-sleep 10
-printf '%s\n' 'fake gemini output'
+exec sleep 2
 "#;
 
         fs::write(&script_path, script).unwrap();
@@ -1028,10 +1027,7 @@ printf '%s\n' 'fake gemini output'
     #[allow(clippy::await_holding_lock)]
     #[tokio::test(flavor = "current_thread")]
     async fn authenticate_rejects_missing_auth_configuration() {
-        let _guard = crate::session_store::ENV_LOCK
-            .get_or_init(|| std::sync::Mutex::new(()))
-            .lock()
-            .unwrap();
+        let _guard = crate::session_store::lock_env();
         let _bin = install_fake_gemini_bin();
         let _home = install_fake_gemini_home(None, None, false);
         let _auth_env = clear_gemini_auth_env();
@@ -1049,10 +1045,7 @@ printf '%s\n' 'fake gemini output'
     #[allow(clippy::await_holding_lock)]
     #[tokio::test(flavor = "current_thread")]
     async fn authenticate_accepts_gemini_api_key_env() {
-        let _guard = crate::session_store::ENV_LOCK
-            .get_or_init(|| std::sync::Mutex::new(()))
-            .lock()
-            .unwrap();
+        let _guard = crate::session_store::lock_env();
         let _bin = install_fake_gemini_bin();
         let _home = install_fake_gemini_home(None, None, false);
         let _auth_env = clear_gemini_auth_env();
@@ -1068,10 +1061,7 @@ printf '%s\n' 'fake gemini output'
     #[allow(clippy::await_holding_lock)]
     #[tokio::test(flavor = "current_thread")]
     async fn authenticate_requires_oauth_credentials_file() {
-        let _guard = crate::session_store::ENV_LOCK
-            .get_or_init(|| std::sync::Mutex::new(()))
-            .lock()
-            .unwrap();
+        let _guard = crate::session_store::lock_env();
         let _bin = install_fake_gemini_bin();
         let _home = install_fake_gemini_home(Some("oauth-personal"), None, false);
         let _auth_env = clear_gemini_auth_env();
@@ -1089,10 +1079,7 @@ printf '%s\n' 'fake gemini output'
     #[allow(clippy::await_holding_lock)]
     #[tokio::test(flavor = "current_thread")]
     async fn authenticate_accepts_oauth_credentials_file() {
-        let _guard = crate::session_store::ENV_LOCK
-            .get_or_init(|| std::sync::Mutex::new(()))
-            .lock()
-            .unwrap();
+        let _guard = crate::session_store::lock_env();
         let _bin = install_fake_gemini_bin();
         let _home = install_fake_gemini_home(Some("oauth-personal"), None, true);
         let _auth_env = clear_gemini_auth_env();
@@ -1107,10 +1094,7 @@ printf '%s\n' 'fake gemini output'
     #[allow(clippy::await_holding_lock)]
     #[tokio::test(flavor = "current_thread")]
     async fn authenticate_accepts_vertex_ai_env() {
-        let _guard = crate::session_store::ENV_LOCK
-            .get_or_init(|| std::sync::Mutex::new(()))
-            .lock()
-            .unwrap();
+        let _guard = crate::session_store::lock_env();
         let _bin = install_fake_gemini_bin();
         let _home = install_fake_gemini_home(Some("vertex-ai"), None, false);
         let _auth_env = clear_gemini_auth_env();
@@ -1126,10 +1110,7 @@ printf '%s\n' 'fake gemini output'
     #[allow(clippy::await_holding_lock)]
     #[tokio::test(flavor = "current_thread")]
     async fn authenticate_rejects_enforced_auth_mismatch() {
-        let _guard = crate::session_store::ENV_LOCK
-            .get_or_init(|| std::sync::Mutex::new(()))
-            .lock()
-            .unwrap();
+        let _guard = crate::session_store::lock_env();
         let _bin = install_fake_gemini_bin();
         let _home = install_fake_gemini_home(None, Some("oauth-personal"), false);
         let _auth_env = clear_gemini_auth_env();
@@ -1148,10 +1129,7 @@ printf '%s\n' 'fake gemini output'
     #[allow(clippy::await_holding_lock)]
     #[tokio::test(flavor = "current_thread")]
     async fn authenticate_prefers_selected_type_over_env() {
-        let _guard = crate::session_store::ENV_LOCK
-            .get_or_init(|| std::sync::Mutex::new(()))
-            .lock()
-            .unwrap();
+        let _guard = crate::session_store::lock_env();
         let _bin = install_fake_gemini_bin();
         let _home = install_fake_gemini_home(Some("oauth-personal"), Some("oauth-personal"), true);
         let _auth_env = clear_gemini_auth_env();
@@ -1166,10 +1144,7 @@ printf '%s\n' 'fake gemini output'
 
     #[test]
     fn auth_type_from_env_prefers_explicit_google_flags() {
-        let _guard = crate::session_store::ENV_LOCK
-            .get_or_init(|| std::sync::Mutex::new(()))
-            .lock()
-            .unwrap();
+        let _guard = crate::session_store::lock_env();
         let _auth_env = clear_gemini_auth_env();
         let _api_key = set_temp_env_var("GEMINI_API_KEY", "test-key");
         let _vertex = set_temp_env_var("GOOGLE_GENAI_USE_VERTEXAI", "true");
@@ -1192,10 +1167,7 @@ printf '%s\n' 'fake gemini output'
     #[allow(clippy::await_holding_lock)]
     #[tokio::test(flavor = "current_thread")]
     async fn cancel_stops_running_prompt() {
-        let _guard = crate::session_store::ENV_LOCK
-            .get_or_init(|| std::sync::Mutex::new(()))
-            .lock()
-            .unwrap();
+        let _guard = crate::session_store::lock_env();
         let _bin = install_fake_gemini_bin();
 
         let driver = GeminiCliDriver::new();

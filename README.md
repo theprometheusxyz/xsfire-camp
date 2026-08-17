@@ -228,6 +228,7 @@ install -m 0755 target/release/xsfire-camp /usr/local/bin/xsfire-camp
 - `docs/plans/orchestration_plan_backend_driver_setup_context.md`
 
 ### Quality and release
+- `docs/quality/system_requirements_done_criteria.md`
 - `docs/quality/verification_guidance.md`
 - `docs/quality/qa_checklist.md`
 - `docs/guides/github_registry_release_runbook.md`

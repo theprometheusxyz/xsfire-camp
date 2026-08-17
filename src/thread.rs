@@ -7228,7 +7228,7 @@ fn extract_slash_command(content: &[UserInput]) -> Option<(&str, &str)> {
 
 #[cfg(test)]
 mod tests {
-    use std::sync::atomic::AtomicUsize;
+    use std::{fs, path::PathBuf, sync::atomic::AtomicUsize};
 
     use codex_core::{
         config::ConfigOverrides, models_manager::model_presets::all_model_presets,
@@ -7244,6 +7244,23 @@ mod tests {
     struct EnvVarRestore {
         key: String,
         old: Option<String>,
+    }
+
+    struct TempExecutableFixture {
+        path: PathBuf,
+    }
+
+    impl TempExecutableFixture {
+        fn new_mach_o() -> Self {
+            let path =
+                std::env::temp_dir().join(format!("acp-link-render-test-{}", Uuid::new_v4()));
+            fs::write(&path, [0xFE, 0xED, 0xFA, 0xCF, 0, 0, 0, 0]).unwrap();
+            Self { path }
+        }
+
+        fn display(&self) -> String {
+            self.path.to_string_lossy().into_owned()
+        }
     }
 
     impl EnvVarRestore {
@@ -7275,6 +7292,12 @@ mod tests {
         }
     }
 
+    impl Drop for TempExecutableFixture {
+        fn drop(&mut self) {
+            drop(fs::remove_file(&self.path));
+        }
+    }
+
     async fn test_actor_for_config_options() -> anyhow::Result<ThreadActor<StubAuth>> {
         let session_id = SessionId::new("test-config-options");
         let client = Arc::new(StubClient::new());
@@ -7301,6 +7324,22 @@ mod tests {
 
     fn has_option(options: &[SessionConfigOption], id: &str) -> bool {
         options.iter().any(|option| option.id.0.as_ref() == id)
+    }
+
+    fn config_current_value(options: &[SessionConfigOption], id: &str) -> Option<String> {
+        options.iter().find_map(|option| {
+            if option.id.0.as_ref() != id {
+                return None;
+            }
+
+            match &option.kind {
+                agent_client_protocol::SessionConfigKind::Select(select) => {
+                    Some(select.current_value.0.to_string())
+                }
+                #[allow(unreachable_patterns)]
+                _ => None,
+            }
+        })
     }
 
     #[test]
@@ -7482,10 +7521,7 @@ mod tests {
     #[tokio::test]
     #[allow(clippy::await_holding_lock)]
     async fn test_slash_command_smoke_flow() -> anyhow::Result<()> {
-        let _guard = crate::session_store::ENV_LOCK
-            .get_or_init(|| std::sync::Mutex::new(()))
-            .lock()
-            .unwrap();
+        let _guard = crate::session_store::lock_env();
         let _visibility_restore = EnvVarRestore::set("ACP_UI_VISIBILITY_MODE", Some("full"));
         let _chunk_restore = EnvVarRestore::set("ACP_UI_TEXT_CHUNK_MAX_CHARS", Some("12000"));
 
@@ -7814,10 +7850,7 @@ mod tests {
     #[allow(clippy::await_holding_lock)]
     #[tokio::test]
     async fn test_monitor_detail_command_includes_runtime_diagnostics() -> anyhow::Result<()> {
-        let _guard = crate::session_store::ENV_LOCK
-            .get_or_init(|| std::sync::Mutex::new(()))
-            .lock()
-            .unwrap();
+        let _guard = crate::session_store::lock_env();
 
         crate::record_client_info(Some("zed@diagnostics-test".to_string()));
         let (session_id, client, _thread, message_tx, local_set) = setup(vec![]).await?;
@@ -7874,10 +7907,7 @@ mod tests {
     #[tokio::test]
     #[allow(clippy::await_holding_lock)]
     async fn test_monitor_detail_logs_runtime_diagnostics_to_canonical_log() -> anyhow::Result<()> {
-        let _guard = crate::session_store::ENV_LOCK
-            .get_or_init(|| std::sync::Mutex::new(()))
-            .lock()
-            .unwrap();
+        let _guard = crate::session_store::lock_env();
 
         let root = std::env::temp_dir().join(format!("acp-monitor-detail-test-{}", Uuid::new_v4()));
         std::fs::create_dir_all(&root)?;
@@ -7994,10 +8024,7 @@ mod tests {
     #[allow(clippy::await_holding_lock)]
     async fn test_auto_runtime_diagnostics_logging_at_notification_threshold() -> anyhow::Result<()>
     {
-        let _guard = crate::session_store::ENV_LOCK
-            .get_or_init(|| std::sync::Mutex::new(()))
-            .lock()
-            .unwrap();
+        let _guard = crate::session_store::lock_env();
 
         let root =
             std::env::temp_dir().join(format!("acp-auto-diagnostics-test-{}", Uuid::new_v4()));
@@ -8650,10 +8677,7 @@ mod tests {
     #[allow(clippy::await_holding_lock)]
     #[tokio::test]
     async fn test_setup_emits_zed_plan_progress_summary() -> anyhow::Result<()> {
-        let _guard = crate::session_store::ENV_LOCK
-            .get_or_init(|| std::sync::Mutex::new(()))
-            .lock()
-            .unwrap();
+        let _guard = crate::session_store::lock_env();
 
         crate::record_client_info(Some("zed@plan-progress-test".to_string()));
         let result = async {
@@ -8722,10 +8746,7 @@ mod tests {
     #[tokio::test]
     async fn test_setup_does_not_emit_plan_progress_summary_for_non_zed_client()
     -> anyhow::Result<()> {
-        let _guard = crate::session_store::ENV_LOCK
-            .get_or_init(|| std::sync::Mutex::new(()))
-            .lock()
-            .unwrap();
+        let _guard = crate::session_store::lock_env();
 
         crate::record_client_info(Some("other-client@plan-progress-test".to_string()));
         let result = async {
@@ -8790,10 +8811,7 @@ mod tests {
     #[allow(clippy::await_holding_lock)]
     async fn test_update_plan_emits_visible_progress_text_for_non_zed_client() -> anyhow::Result<()>
     {
-        let _guard = crate::session_store::ENV_LOCK
-            .get_or_init(|| std::sync::Mutex::new(()))
-            .lock()
-            .unwrap();
+        let _guard = crate::session_store::lock_env();
 
         crate::record_client_info(Some("other-client@plan-text-test".to_string()));
         let result = async {
@@ -8879,10 +8897,7 @@ mod tests {
     #[allow(clippy::await_holding_lock)]
     async fn test_update_plan_avoids_duplicate_progress_text_for_zed_client() -> anyhow::Result<()>
     {
-        let _guard = crate::session_store::ENV_LOCK
-            .get_or_init(|| std::sync::Mutex::new(()))
-            .lock()
-            .unwrap();
+        let _guard = crate::session_store::lock_env();
 
         crate::record_client_info(Some("zed@plan-text-test".to_string()));
         let result = async {
@@ -9063,6 +9078,286 @@ mod tests {
     }
 
     #[tokio::test]
+    #[allow(clippy::await_holding_lock)]
+    async fn test_core_runtime_acceptance_setup_status_monitor_vector_and_config_updates()
+    -> anyhow::Result<()> {
+        let _guard = crate::session_store::lock_env();
+        let _density_restore = EnvVarRestore::set(CONFIG_OPTIONS_DENSITY_ENV, Some("full"));
+        let _columns_restore = EnvVarRestore::set("COLUMNS", Some("160"));
+
+        let root =
+            std::env::temp_dir().join(format!("acp-core-runtime-acceptance-{}", Uuid::new_v4()));
+        std::fs::create_dir_all(&root)?;
+
+        // Safe within this test due to ENV_LOCK serialization.
+        unsafe {
+            std::env::set_var("ACP_HOME", &root);
+        }
+        crate::record_client_info(Some("other-client@core-runtime-acceptance".to_string()));
+
+        let result = async {
+            let mut idx = crate::session_store::GlobalSessionIndex::load()
+                .expect("ACP_HOME should be resolvable");
+            let global_id = idx.get_or_create("codex:test-core-runtime-acceptance").unwrap();
+            let store = crate::session_store::SessionStore::init(
+                global_id.clone(),
+                "codex",
+                "acp-session-id",
+                "backend-session-id",
+                Some(Path::new("/tmp/repo")),
+            )
+            .expect("SessionStore should init");
+
+            let session_id = SessionId::new("core-runtime-acceptance");
+            let client = Arc::new(StubClient::new());
+            let session_client = SessionClient::with_client(
+                session_id.clone(),
+                client.clone(),
+                Arc::default(),
+                Some(store),
+            );
+            let conversation = Arc::new(StubCodexThread::new());
+            let models_manager = Arc::new(StubModelsManager);
+            let config = Config::load_with_cli_overrides_and_harness_overrides(
+                vec![],
+                ConfigOverrides::default(),
+            )
+            .await?;
+            let (message_tx, message_rx) = tokio::sync::mpsc::unbounded_channel();
+
+            let actor = ThreadActor::new(
+                StubAuth,
+                session_client,
+                conversation,
+                models_manager,
+                config,
+                message_rx,
+            );
+
+            let local_set = LocalSet::new();
+            local_set.spawn_local(actor.spawn());
+
+            async fn send_prompt(
+                message_tx: &UnboundedSender<ThreadMessage>,
+                session_id: &SessionId,
+                prompt: &str,
+            ) -> anyhow::Result<StopReason> {
+                let (prompt_response_tx, prompt_response_rx) = tokio::sync::oneshot::channel();
+                message_tx.send(ThreadMessage::Prompt {
+                    request: PromptRequest::new(session_id.clone(), vec![prompt.into()]),
+                    response_tx: prompt_response_tx,
+                })?;
+                Ok(prompt_response_rx.await??.await??)
+            }
+
+            tokio::try_join!(
+                async {
+                    assert_eq!(
+                        send_prompt(&message_tx, &session_id, "/setup").await?,
+                        StopReason::EndTurn
+                    );
+
+                    let (set_config_tx, set_config_rx) = tokio::sync::oneshot::channel();
+                    message_tx.send(ThreadMessage::SetConfigOption {
+                        config_id: SessionConfigId::new("task_orchestration_mode"),
+                        value: SessionConfigValueId::new("sequential"),
+                        response_tx: set_config_tx,
+                    })?;
+                    set_config_rx.await??;
+
+                    assert_eq!(
+                        send_prompt(&message_tx, &session_id, "/status").await?,
+                        StopReason::EndTurn
+                    );
+                    assert_eq!(
+                        send_prompt(&message_tx, &session_id, "/monitor").await?,
+                        StopReason::EndTurn
+                    );
+                    assert_eq!(
+                        send_prompt(&message_tx, &session_id, "/vector").await?,
+                        StopReason::EndTurn
+                    );
+                    drop(message_tx);
+                    anyhow::Ok(())
+                },
+                async {
+                    local_set.await;
+                    anyhow::Ok(())
+                }
+            )?;
+
+            let notifications = client.notifications.lock().unwrap();
+            let plans = notifications
+                .iter()
+                .filter_map(|notification| match &notification.update {
+                    SessionUpdate::Plan(plan) => Some(plan),
+                    _ => None,
+                })
+                .collect::<Vec<_>>();
+            assert!(
+                !plans.is_empty(),
+                "expected setup/status/monitor/vector flow to emit plan updates. notifications={notifications:?}"
+            );
+
+            let verify_step = plans
+                .last()
+                .and_then(|plan| {
+                    plan.entries.iter().find(|entry| {
+                        entry
+                            .content
+                            .starts_with("Verify: run /status, /monitor, and /vector (")
+                    })
+                })
+                .expect("expected verify step in final setup plan");
+            assert_eq!(
+                verify_step.status,
+                PlanEntryStatus::Completed,
+                "verify step should be completed after /setup -> /status -> /monitor -> /vector"
+            );
+
+            let text_chunks = notifications
+                .iter()
+                .filter_map(|notification| match &notification.update {
+                    SessionUpdate::AgentMessageChunk(ContentChunk {
+                        content: ContentBlock::Text(TextContent { text, .. }),
+                        ..
+                    }) => Some(text.clone()),
+                    _ => None,
+                })
+                .collect::<Vec<_>>();
+            assert!(
+                text_chunks
+                    .iter()
+                    .any(|text| text.contains("Plan update:")),
+                "expected non-zed client to receive visible plan progress text. notifications={notifications:?}"
+            );
+
+            let Some(status_text) = notifications.iter().rev().find_map(|notification| {
+                let SessionUpdate::AgentMessageChunk(ContentChunk {
+                    content: ContentBlock::Text(TextContent { text, .. }),
+                    ..
+                }) = &notification.update
+                else {
+                    return None;
+                };
+                text.contains("Session status:").then_some(text.as_str())
+            }) else {
+                panic!("expected /status output. notifications={notifications:?}");
+            };
+            assert!(
+                status_text.contains("- task_orchestration: sequential"),
+                "expected /status to reflect updated orchestration mode. status={status_text}"
+            );
+            assert!(
+                status_text.contains("- work_orchestration_profile: Codex / ChatGPT (R->P->M->W->A)"),
+                "expected /status to include work-orchestration profile. status={status_text}"
+            );
+            assert!(
+                status_text.contains("- acp_bridge: live ACP plan/tool updates available"),
+                "expected /status to include ACP bridge status. status={status_text}"
+            );
+
+            let Some(monitor_text) = notifications.iter().rev().find_map(|notification| {
+                let SessionUpdate::AgentMessageChunk(ContentChunk {
+                    content: ContentBlock::Text(TextContent { text, .. }),
+                    ..
+                }) = &notification.update
+                else {
+                    return None;
+                };
+                text.contains("Thread monitor").then_some(text.as_str())
+            }) else {
+                panic!("expected /monitor output. notifications={notifications:?}");
+            };
+            assert!(
+                monitor_text.contains("Task monitoring: orchestration=sequential"),
+                "expected /monitor to reflect updated orchestration mode. monitor={monitor_text}"
+            );
+
+            let Some(vector_text) = notifications.iter().rev().find_map(|notification| {
+                let SessionUpdate::AgentMessageChunk(ContentChunk {
+                    content: ContentBlock::Text(TextContent { text, .. }),
+                    ..
+                }) = &notification.update
+                else {
+                    return None;
+                };
+                text.contains("Workflow minimap + semantic compass")
+                    .then_some(text.as_str())
+            }) else {
+                panic!("expected /vector output. notifications={notifications:?}");
+            };
+            assert!(
+                vector_text.contains("Workflow minimap + semantic compass"),
+                "expected /vector output to include workflow minimap summary. vector={vector_text}"
+            );
+
+            let Some(ConfigOptionUpdate { config_options, .. }) = notifications
+                .iter()
+                .rev()
+                .find_map(|notification| match &notification.update {
+                    SessionUpdate::ConfigOptionUpdate(update) => Some(update.clone()),
+                    _ => None,
+                })
+            else {
+                panic!("expected config option update after changing task orchestration. notifications={notifications:?}");
+            };
+            assert_eq!(
+                config_current_value(&config_options, "task_orchestration_mode").as_deref(),
+                Some("sequential"),
+                "expected config option update to advertise sequential orchestration"
+            );
+
+            drop(notifications);
+
+            let canonical_path = root
+                .join("sessions")
+                .join(&global_id)
+                .join("canonical.jsonl");
+            let canonical = std::fs::read_to_string(&canonical_path)?;
+            let events = canonical
+                .lines()
+                .map(serde_json::from_str::<serde_json::Value>)
+                .collect::<Result<Vec<_>, _>>()?;
+
+            let prompt_events = events
+                .iter()
+                .filter(|event| event.get("kind").and_then(|kind| kind.as_str()) == Some("acp.prompt"))
+                .count();
+            assert!(
+                prompt_events >= 4,
+                "expected canonical log to record setup/status/monitor/vector prompts. canonical={canonical}"
+            );
+            assert!(
+                events
+                    .iter()
+                    .any(|event| event.get("kind").and_then(|kind| kind.as_str()) == Some("acp.plan")),
+                "expected canonical log to include acp.plan events. canonical={canonical}"
+            );
+            assert!(
+                events.iter().any(|event| {
+                    event.get("kind").and_then(|kind| kind.as_str())
+                        == Some("acp.task_monitoring.orchestration_mode")
+                        && event.pointer("/data/mode").and_then(|mode| mode.as_str())
+                            == Some("sequential")
+                }),
+                "expected canonical log to include sequential orchestration mode change. canonical={canonical}"
+            );
+
+            anyhow::Ok(())
+        }
+        .await;
+
+        crate::record_client_info(None);
+        drop(std::fs::remove_dir_all(&root));
+        unsafe {
+            std::env::remove_var("ACP_HOME");
+        }
+
+        result
+    }
+
+    #[tokio::test]
     async fn test_monitoring_auto_mode_clears_completed_prompt_tasks() -> anyhow::Result<()> {
         let (session_id, client, _, message_tx, local_set) = setup(vec![]).await?;
 
@@ -9122,10 +9417,7 @@ mod tests {
     #[tokio::test]
     #[allow(clippy::await_holding_lock)]
     async fn test_config_options_compact_density_hides_advanced_groups() -> anyhow::Result<()> {
-        let _guard = crate::session_store::ENV_LOCK
-            .get_or_init(|| std::sync::Mutex::new(()))
-            .lock()
-            .unwrap();
+        let _guard = crate::session_store::lock_env();
         let _density_restore = EnvVarRestore::set(CONFIG_OPTIONS_DENSITY_ENV, Some("compact"));
         let _columns_restore = EnvVarRestore::set("COLUMNS", Some("200"));
         let actor = test_actor_for_config_options().await?;
@@ -9156,10 +9448,7 @@ mod tests {
     #[allow(clippy::await_holding_lock)]
     async fn test_config_options_full_density_narrow_width_shows_panel_selector()
     -> anyhow::Result<()> {
-        let _guard = crate::session_store::ENV_LOCK
-            .get_or_init(|| std::sync::Mutex::new(()))
-            .lock()
-            .unwrap();
+        let _guard = crate::session_store::lock_env();
         let _density_restore = EnvVarRestore::set(CONFIG_OPTIONS_DENSITY_ENV, Some("full"));
         let _columns_restore = EnvVarRestore::set("COLUMNS", Some("120"));
         let actor = test_actor_for_config_options().await?;
@@ -9186,10 +9475,7 @@ mod tests {
     #[tokio::test]
     #[allow(clippy::await_holding_lock)]
     async fn test_config_options_panel_switch_changes_visible_group() -> anyhow::Result<()> {
-        let _guard = crate::session_store::ENV_LOCK
-            .get_or_init(|| std::sync::Mutex::new(()))
-            .lock()
-            .unwrap();
+        let _guard = crate::session_store::lock_env();
         let _density_restore = EnvVarRestore::set(CONFIG_OPTIONS_DENSITY_ENV, Some("full"));
         let _columns_restore = EnvVarRestore::set("COLUMNS", Some("120"));
         let mut actor = test_actor_for_config_options().await?;
@@ -9221,10 +9507,7 @@ mod tests {
     #[allow(clippy::await_holding_lock)]
     async fn test_config_options_full_density_wide_width_inlines_all_advanced_options()
     -> anyhow::Result<()> {
-        let _guard = crate::session_store::ENV_LOCK
-            .get_or_init(|| std::sync::Mutex::new(()))
-            .lock()
-            .unwrap();
+        let _guard = crate::session_store::lock_env();
         let _density_restore = EnvVarRestore::set(CONFIG_OPTIONS_DENSITY_ENV, Some("full"));
         let _columns_restore = EnvVarRestore::set("COLUMNS", Some("160"));
         let actor = test_actor_for_config_options().await?;
@@ -9268,10 +9551,7 @@ mod tests {
     #[tokio::test]
     #[allow(clippy::await_holding_lock)]
     async fn test_canonical_log_correlation_path() -> anyhow::Result<()> {
-        let _guard = crate::session_store::ENV_LOCK
-            .get_or_init(|| std::sync::Mutex::new(()))
-            .lock()
-            .unwrap();
+        let _guard = crate::session_store::lock_env();
 
         let root =
             std::env::temp_dir().join(format!("acp-thread-correlation-test-{}", Uuid::new_v4()));
@@ -9626,10 +9906,7 @@ mod tests {
     #[tokio::test]
     #[allow(clippy::await_holding_lock)]
     async fn test_init() -> anyhow::Result<()> {
-        let _guard = crate::session_store::ENV_LOCK
-            .get_or_init(|| std::sync::Mutex::new(()))
-            .lock()
-            .unwrap();
+        let _guard = crate::session_store::lock_env();
         let _visibility_restore = EnvVarRestore::set("ACP_UI_VISIBILITY_MODE", Some("full"));
         let _chunk_restore = EnvVarRestore::set("ACP_UI_TEXT_CHUNK_MAX_CHARS", Some("12000"));
 
@@ -10067,10 +10344,7 @@ mod tests {
     #[tokio::test]
     #[allow(clippy::await_holding_lock)]
     async fn test_final_only_visibility_hides_internal_updates() -> anyhow::Result<()> {
-        let _guard = crate::session_store::ENV_LOCK
-            .get_or_init(|| std::sync::Mutex::new(()))
-            .lock()
-            .unwrap();
+        let _guard = crate::session_store::lock_env();
         let _visibility_restore = EnvVarRestore::set("ACP_UI_VISIBILITY_MODE", Some("final_only"));
 
         let session_id = SessionId::new("final-only-visibility");
@@ -10167,10 +10441,7 @@ mod tests {
     #[tokio::test]
     #[allow(clippy::await_holding_lock)]
     async fn test_send_agent_text_respects_ui_text_chunk_limit_env() -> anyhow::Result<()> {
-        let _guard = crate::session_store::ENV_LOCK
-            .get_or_init(|| std::sync::Mutex::new(()))
-            .lock()
-            .unwrap();
+        let _guard = crate::session_store::lock_env();
         let _chunk_restore = EnvVarRestore::set("ACP_UI_TEXT_CHUNK_MAX_CHARS", Some("512"));
 
         let session_id = SessionId::new("chunk-limit-test");
@@ -10232,13 +10503,12 @@ mod tests {
         Ok(())
     }
 
+
+
     #[tokio::test]
     #[allow(clippy::await_holding_lock)]
     async fn test_send_tool_call_update_caps_raw_output_for_ui() -> anyhow::Result<()> {
-        let _guard = crate::session_store::ENV_LOCK
-            .get_or_init(|| std::sync::Mutex::new(()))
-            .lock()
-            .unwrap();
+        let _guard = crate::session_store::lock_env();
         let _raw_limit_restore = EnvVarRestore::set("ACP_TOOL_RAW_OUTPUT_MAX_CHARS", Some("2048"));
 
         let session_id = SessionId::new("raw-output-cap-test");

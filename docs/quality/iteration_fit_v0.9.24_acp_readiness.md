@@ -6,6 +6,7 @@
 - Owner: Codex
 - Branch / commit: `main` / `6aabc683f4f72f8b2a89359ee8bace1b57bf9f37`
 - Scope: strict ACP smoke evidence, release evidence hygiene, and ACP registry blocker capture
+- Companion SoT: `docs/quality/system_requirements_done_criteria.md`
 
 ## Goal
 - Close the `v0.9.24` ACP release-readiness evidence gaps by recording strict smoke, release state, and registry blocker status in concrete repo artifacts.
@@ -104,6 +105,97 @@
 - Score change: Must `3/4 -> 4/4`, Should `0/2 -> 2/2`
 - Next action: keep manual verification and upstream registry approval as explicit remaining operational tasks, not hidden checklist debt.
 
+### Iteration 4
+- Conclusion: partial manual ACP verification is now evidenced from a real client session, but it does not yet satisfy the `/setup`-driven completion path.
+- Evidence:
+  - fact: a user-provided ACP session transcript from `2026-04-03` in `docs/quality` shows successful responses for `/status`, `/monitor`, `/vector`, `/model`, and `/approvals`.
+  - fact: `/monitor` output includes `Task monitoring: orchestration=parallel, monitor=auto, vector_checks=on, preempt_on_new_prompt=on`, which satisfies the task-snapshot presence check.
+  - fact: the same transcript explicitly says `Plan: no plan updates received yet`, so the `/setup` verification step did not run and the setup-plan completion criterion remains open.
+  - interpretation: the adapter command surface is alive in a real session, but the higher-value setup/plan progression path still needs an explicit run.
+  - assumption: the transcript was captured against the current `xsfire-camp` workspace and can be treated as release evidence for the listed commands only.
+- Score change: Must `4/4 -> 4/4`, Should `2/2 -> 2/2`
+- Next action: run `/setup` before `/status -> /monitor -> /vector` in the next manual verification pass so the plan-completion path can be closed.
+
+### Iteration 5
+- Conclusion: automated preflight for setup/monitor verification is now reproducible and passing, with a timestamped operator checklist generated for the remaining in-client checks.
+- Evidence:
+  - fact: `scripts/manual_verification_setup_monitor.sh` completed successfully and generated a report at `logs/manual_verification/setup_monitor_20260412_010614.md`.
+  - fact: the run included `cargo fmt --check`, `cargo test` (`107 passed`), and `node npm/testing/test-platform-detection.js` (`All platform detection tests passed`).
+  - interpretation: repo-controlled verification gates are green for the current setup/monitor implementation line.
+  - assumption: checklist items that require ACP client UI interaction (Plan panel/agent panel/click-through behavior) still require manual execution in Zed or equivalent ACP client.
+- Score change: Must `4/4 -> 4/4`, Should `2/2 -> 2/2`
+- Next action: execute checklist steps 1-10 from the generated manual report in a live ACP client session and attach resulting artifacts.
+
+### Iteration 6
+- Conclusion: a live Zed session for `xsfire-camp` is indirectly evidenced and the `AgentPanel` state is confirmed, but command-level `/setup` and plan-transition artifacts are still not available.
+- Evidence:
+  - fact: `sqlite3 "$HOME/Library/Application Support/Zed/db/0-stable/db.sqlite" "select workspace_id, paths, timestamp, right_dock_active_panel, session_id from workspaces where workspace_id=25;"` returned workspace `25` for `/Volumes/Extend/Projects/DevWorkspace/xsfire-camp` with `right_dock_active_panel=AgentPanel` at `2026-04-11 17:24:50`.
+  - fact: `strings "$HOME/Library/Application Support/Zed/db/0-stable/db.sqlite-wal" | rg 'agent_panel25|xsfire-camp'` returned `agent_panel25` state with `selected_agent.custom.name=xsfire-camp` and `last_active_thread.session_id=019d7d4a-54e8-75e1-8933-bc506e070f0e`.
+  - fact: no fresh `logs/codex_chats/*`, `sessions/*/canonical.jsonl`, or ACP transcript file was located for the same verification window.
+  - interpretation: the user did open the project in Zed with the custom agent panel active, which closes the narrow UI-presence check.
+  - assumption: without a transcript or screenshot, slash-command execution order and plan-step completion cannot be promoted from inferred to verified evidence.
+- Score change: Must `4/4 -> 4/4`, Should `2/2 -> 2/2`
+- Next action: keep `/setup -> /status -> /monitor -> /vector` plan progression as the only remaining manual evidence gap, or attach one screenshot/transcript artifact if the session needs to be fully closed.
+
+### Iteration 7
+- Conclusion: ACP now keeps raw executable artifact paths non-clickable in outgoing agent text, so Zed should no longer try to launch `target/release/<binary>` paths as macOS apps.
+- Evidence:
+  - fact: `src/link_paths.rs` now detects local raw executable artifacts by binary magic (`Mach-O`, `ELF`, `MZ`) and rewrites markdown links for those targets as code-text references instead of clickable local file links.
+  - fact: `src/thread.rs` includes an ACP session test `test_send_agent_text_keeps_raw_executable_paths_non_clickable`.
+  - fact: `./target/debug/deps/xsfire_camp-108d14335f90d408 --test-threads=1` passed `111` tests, including:
+    - `link_paths::tests::keeps_raw_executable_paths_non_clickable`
+    - `link_paths::tests::keeps_existing_file_uris_non_clickable_for_raw_executables`
+    - `thread::tests::test_send_agent_text_keeps_raw_executable_paths_non_clickable`
+  - fact: `node npm/testing/test-platform-detection.js` still passed after the change.
+  - interpretation: the `-50` failure mode is now blocked at the ACP rendering layer instead of relying on Zed/macOS to reject the click target.
+  - assumption: final UI confirmation in Zed is still recommended because the repo cannot assert client-side rendering policy without a fresh screenshot/transcript.
+- Score change: Must `4/4 -> 4/4`, Should `2/2 -> 2/2`
+- Next action: rerun the Zed click-path scenario once and confirm raw executables show as non-clickable code text while source/doc links still open through `file:///...`.
+
+### Iteration 8
+- Conclusion: the fixed binary is now installed at the exact Zed runtime path, so new ACP replies in Zed will use the non-clickable raw-executable rendering; previously rendered replies in an existing thread remain unchanged.
+- Evidence:
+  - fact: `./scripts/build_and_install.sh` completed successfully and printed `Installed: /Users/g/.local/bin/xsfire-camp`.
+  - fact: `rg -n 'xsfire-camp|CODEX_HOME' /Users/g/.config/zed/settings.json` shows Zed is configured with `command: /Users/g/.local/bin/xsfire-camp` and `CODEX_HOME=/Users/g/.codex`.
+  - fact: `cmp -s /Users/g/.local/bin/xsfire-camp target/release/xsfire-camp && echo MATCH` returned `MATCH`, and both files share the same size and timestamp (`49996688 bytes`, `Apr 12 03:22:15 2026`).
+  - fact: `cargo test -- --test-threads=1 > /tmp/xsfire_camp_test.log 2>&1 && rg -n 'keeps_raw_executable_paths_non_clickable|keeps_existing_file_uris_non_clickable_for_raw_executables|test_send_agent_text_keeps_raw_executable_paths_non_clickable|test result:' /tmp/xsfire_camp_test.log` reported the three path-rendering tests as `ok` and `111 passed; 0 failed`.
+  - interpretation: the fix is not only present in the repo but also deployed to the binary Zed launches for the `xsfire-camp` custom agent.
+  - assumption: message bodies already emitted in an older Zed thread are not retroactively rewritten, because link normalization is applied when outgoing ACP agent text is sent.
+- Score change: Must `4/4 -> 4/4`, Should `2/2 -> 2/2`
+- Next action: trigger one fresh ACP reply in Zed that includes both a source/doc file path and a raw executable artifact path, then verify only the executable path is rendered as code text.
+
+### Iteration 9
+- Conclusion: the repeated `-50` report in Zed is consistent with a stale `xsfire-camp` process that started before the new binary was installed, so the client must respawn the agent process before UI verification is meaningful.
+- Evidence:
+  - fact: `ps -axo pid,lstart,command | rg '[x]sfire-camp|zed'` showed multiple live `/Users/g/.local/bin/xsfire-camp -c model_auto_compact_token_limit=90000` processes with start times `Sat Apr 11 19:42:06 2026`, `Fri Apr 10 22:15:25 2026`, `Sat Apr 11 00:23:49 2026`, and `Sun Apr 12 01:58:06 2026`.
+  - fact: the installed binary at `/Users/g/.local/bin/xsfire-camp` was updated later at `Apr 12 03:22:15 2026`.
+  - interpretation: any Zed ACP session still bound to one of those older processes can continue emitting the pre-fix clickable raw-binary links even though the file on disk is updated.
+  - assumption: restarting the ACP session or restarting Zed is sufficient for the client to spawn a fresh `xsfire-camp` process from the updated command path.
+- Score change: Must `4/4 -> 4/4`, Should `2/2 -> 2/2`
+- Next action: restart the active Zed ACP session or restart Zed, then request a fresh reply that includes both a source/doc path and a raw executable path.
+
+### Iteration 10
+- Conclusion: core ACP runtime acceptance is now closed by deterministic repo-controlled evidence; the remaining gap is target ACP client rendering/open behavior only.
+- Evidence:
+  - fact: `src/thread.rs` now includes `test_core_runtime_acceptance_setup_status_monitor_vector_and_config_updates`, which runs `/setup -> /status -> /monitor -> /vector`, changes `task_orchestration_mode` to `sequential`, and verifies `Plan`, `ConfigOptionUpdate`, `/status`, `/monitor`, `/vector`, and canonical log evidence together.
+  - fact: `docs/reference/acp_standard_spec.md` and `docs/quality/qa_checklist.md` now align on the actual `session/update` contract (`ConfigOptionUpdate`, not `CurrentModeUpdate`).
+  - interpretation: the repo can now prove the core ACP runtime flow without depending on a fresh Zed transcript.
+  - assumption: target client UI rendering/open policy still requires live client evidence because ACP stdio tests cannot prove editor-side click/open behavior.
+- Score change: Must `4/4 -> 4/4`, Should `2/2 -> 2/2`
+- Next action: collect one fresh target-client pass for local-link open policy and plan/progress rendering, then close the remaining external gate.
+
+### Iteration 11
+- Conclusion: the repo-controlled completion gate is fully revalidated on the current tree, and the only remaining work is external ACP client evidence.
+- Evidence:
+  - fact: `cargo fmt --check` passed on `2026-04-13`.
+  - fact: `cargo test` passed with `118 passed, 0 failed` on `2026-04-13`.
+  - fact: `cargo build --release` passed on `2026-04-13`.
+  - fact: `scripts/acp_compat_smoke.sh --strict` generated `logs/smoke/acp_compat_smoke_20260413_081510.md` with `Overall: pass`.
+  - interpretation: repo-controlled `Must` criteria are satisfied by current evidence, not only by historical smoke/test artifacts.
+  - assumption: external client rendering/open behavior still cannot be promoted from repo evidence to verified acceptance without a fresh target-client session.
+- Score change: Must `4/4 -> 4/4`, Should `2/2 -> 2/2`
+- Next action: keep `EG-01..02` as the only live-client gate.
+
 ## Current Score
 - Must: `4 / 4`
 - Should: `2 / 2`
@@ -118,11 +210,12 @@
 - Reason: strict smoke shows no urgent ACP schema drift, so the correct action is to preserve the implementation line and close the evidence/operational gap instead of forcing a speculative ACP upgrade.
 
 ## Release / Feedback
-- Release impact: `v0.9.24` remains the active ACP release target with a published GitHub release and a passing strict smoke report.
+- Release impact: `v0.9.24` remains the active ACP release target with a published GitHub release and a passing strict smoke report (`logs/smoke/acp_compat_smoke_20260413_081510.md`).
 - Regression risk: low for ACP contract drift in the current release line; medium for future unstable-schema drift and non-`codex` backend parity gaps.
 - Failure-log attachment status: `N/A (strict pass)`
 - Follow-up owner: repo owner for manual verification, ACP registry maintainers for fork-workflow approval
-- Next verification command: `scripts/acp_compat_smoke.sh --strict`
+- Manual verification status: core ACP runtime acceptance is now covered by automated repo evidence (`thread::tests::test_core_runtime_acceptance_setup_status_monitor_vector_and_config_updates` plus strict smoke); partial pass from a real ACP client session remains for `/status`, `/monitor`, `/vector`, `/model`, and `/approvals`; automated preflight now pass with report `logs/manual_verification/setup_monitor_20260412_010614.md`; indirect Zed evidence confirms `xsfire-camp` opened with `AgentPanel` active on `2026-04-11 17:24:50`; the fixed runtime binary is installed at Zed's configured command path `/Users/g/.local/bin/xsfire-camp`; raw executable local-path rendering is covered by automated tests, but a fresh Zed ACP reply is still needed because older thread messages are not retroactively rewritten and at least one live Zed ACP process predates the reinstall, so the client session must be restarted before editor-side link/rendering checks can be meaningfully rechecked
+- Next verification command: restart the ACP client session, then request one reply containing both a source/doc path and a raw executable path while observing plan/progress rendering
 
 ## Done Gate
 - [x] All `Must` items passed.

@@ -393,8 +393,6 @@ impl UnifiedExecProcessManager {
                 exit_code,
                 call_id: entry.call_id.clone(),
                 process_id,
-                terminal_id: entry.terminal_id.clone(),
-                cwd: entry.cwd.clone(),
             }
         }
     }
@@ -719,8 +717,6 @@ enum ProcessStatus {
         exit_code: Option<i32>,
         call_id: String,
         process_id: String,
-        terminal_id: Option<String>,
-        cwd: PathBuf,
     },
     Exited {
         exit_code: Option<i32>,

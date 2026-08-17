@@ -35,7 +35,6 @@ use tokio::sync::Mutex;
 
 use crate::codex::Session;
 use crate::codex::TurnContext;
-use crate::protocol::EventMsg;
 use crate::sandboxing::SandboxPermissions;
 
 mod async_watcher;
@@ -60,13 +59,13 @@ pub(crate) const MAX_UNIFIED_EXEC_PROCESSES: usize = 64;
 pub(crate) const WARNING_UNIFIED_EXEC_PROCESSES: usize = 60;
 
 pub struct UnifiedExecContext {
-    pub session: Arc<Session>,
-    pub turn: Arc<TurnContext>,
-    pub call_id: String,
+    pub(crate) session: Arc<Session>,
+    pub(crate) turn: Arc<TurnContext>,
+    pub(crate) call_id: String,
 }
 
 impl UnifiedExecContext {
-    pub fn new(session: Arc<Session>, turn: Arc<TurnContext>, call_id: String) -> Self {
+    pub(crate) fn new(session: Arc<Session>, turn: Arc<TurnContext>, call_id: String) -> Self {
         Self {
             session,
             turn,
@@ -92,10 +91,6 @@ impl UnifiedExecContext {
 
     pub fn resolve_path(&self, path: Option<String>) -> PathBuf {
         self.turn.resolve_path(path)
-    }
-
-    pub async fn send_event(&self, msg: EventMsg) {
-        self.session.send_event(self.turn.as_ref(), msg).await;
     }
 }
 

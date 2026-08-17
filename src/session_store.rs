@@ -15,6 +15,14 @@ static SECRET_REDACTION_RE: OnceLock<Regex> = OnceLock::new();
 #[cfg(test)]
 pub(crate) static ENV_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
 
+#[cfg(test)]
+pub(crate) fn lock_env() -> std::sync::MutexGuard<'static, ()> {
+    ENV_LOCK
+        .get_or_init(|| Mutex::new(()))
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+}
+
 fn secret_redaction_re() -> &'static Regex {
     SECRET_REDACTION_RE.get_or_init(|| {
         // Very rough: redact common "sk-..." style tokens.
@@ -269,7 +277,7 @@ mod tests {
 
     #[test]
     fn writes_canonical_log_and_redacts_secrets() {
-        let _guard = ENV_LOCK.get_or_init(|| Mutex::new(())).lock().unwrap();
+        let _guard = lock_env();
 
         let root = std::env::temp_dir().join(format!("acp-session-store-test-{}", Uuid::new_v4()));
         std::fs::create_dir_all(&root).unwrap();

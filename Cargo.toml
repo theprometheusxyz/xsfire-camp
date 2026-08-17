@@ -56,6 +56,8 @@ uuid = { version = "1", features = ["v4"] }
 codex-core = { git = "https://github.com/zed-industries/codex", branch = "acp", features = [
   "test-support"
 ] }
+futures = "0.3"
+piper = "0.2"
 
 [lints.rust]
 let-underscore = "warn"

@@ -10,8 +10,8 @@ usage() {
   cat <<'EOF'
 Usage: scripts/manual_verification_setup_monitor.sh [--skip-gates]
 
-Runs a deterministic preflight for setup/task-monitoring changes and creates a
-manual verification checklist report under logs/manual_verification/.
+Runs a deterministic preflight for external ACP-client verification and creates
+a manual verification checklist report under logs/manual_verification/.
 
 Options:
   --skip-gates   Skip automated gates (cargo fmt --check, cargo test, node test)
@@ -42,25 +42,65 @@ mkdir -p "$REPORT_DIR"
 STATUS_FMT="not_run"
 STATUS_TEST="not_run"
 STATUS_NODE="not_run"
+WARNINGS=()
+
+append_warning_once() {
+  local warning_line="$1"
+  local existing
+  for existing in "${WARNINGS[@]}"; do
+    if [[ "$existing" == "$warning_line" ]]; then
+      return
+    fi
+  done
+  WARNINGS+=("$warning_line")
+}
+
+collect_warnings_from_output() {
+  local output="$1"
+  local line
+  while IFS= read -r line; do
+    if [[ "$line" == WARNING:* ]]; then
+      append_warning_once "$line"
+    fi
+  done <<< "$output"
+}
 
 if [[ "$SKIP_GATES" != "true" ]]; then
-  if (cd "$ROOT_DIR" && cargo fmt --check); then
+  if FMT_OUTPUT="$(cd "$ROOT_DIR" && cargo fmt --check 2>&1)"; then
     STATUS_FMT="pass"
+    [[ -n "$FMT_OUTPUT" ]] && printf '%s\n' "$FMT_OUTPUT"
   else
     STATUS_FMT="fail"
+    [[ -n "$FMT_OUTPUT" ]] && printf '%s\n' "$FMT_OUTPUT" >&2
   fi
+  collect_warnings_from_output "$FMT_OUTPUT"
 
-  if (cd "$ROOT_DIR" && cargo test); then
+  if TEST_OUTPUT="$(cd "$ROOT_DIR" && cargo test 2>&1)"; then
     STATUS_TEST="pass"
+    [[ -n "$TEST_OUTPUT" ]] && printf '%s\n' "$TEST_OUTPUT"
   else
     STATUS_TEST="fail"
+    [[ -n "$TEST_OUTPUT" ]] && printf '%s\n' "$TEST_OUTPUT" >&2
   fi
+  collect_warnings_from_output "$TEST_OUTPUT"
 
-  if (cd "$ROOT_DIR" && node npm/testing/test-platform-detection.js); then
+  if NODE_OUTPUT="$(cd "$ROOT_DIR" && node npm/testing/test-platform-detection.js 2>&1)"; then
     STATUS_NODE="pass"
+    [[ -n "$NODE_OUTPUT" ]] && printf '%s\n' "$NODE_OUTPUT"
   else
     STATUS_NODE="fail"
+    [[ -n "$NODE_OUTPUT" ]] && printf '%s\n' "$NODE_OUTPUT" >&2
   fi
+  collect_warnings_from_output "$NODE_OUTPUT"
+fi
+
+WARNINGS_SECTION="- none"
+if [[ ${#WARNINGS[@]} -gt 0 ]]; then
+  WARNINGS_SECTION=""
+  for warning_line in "${WARNINGS[@]}"; do
+    WARNINGS_SECTION+=$'\n'"- $warning_line"
+  done
+  WARNINGS_SECTION="${WARNINGS_SECTION#"$'\n'"}"
 fi
 
 cat > "$REPORT_PATH" <<EOF
@@ -77,28 +117,38 @@ cat > "$REPORT_PATH" <<EOF
 
 ## Manual scenario checklist
 
-Run these in ACP client (e.g., Zed Agent Panel) using the same workspace.
+Automated core-runtime coverage already exists in:
 
-1. Run \`/setup\` and confirm setup wizard text + Plan panel appears.
-2. Ask ACP to output a markdown file link to a known local file in this workspace, click the link, and confirm it opens the intended absolute path without a \`-50\` error.
-3. Run \`/status\` then check Plan step \`Verify: run /status, /monitor, and /vector\` changes from pending to in_progress.
+- \`thread::tests::test_core_runtime_acceptance_setup_status_monitor_vector_and_config_updates\`
+
+Use this checklist only for target ACP client / editor behavior that the repo
+cannot prove by itself. Run these in an ACP client (for example Zed Agent
+Panel) using the same workspace.
+
+If \`xsfire-camp\` was already running before reinstalling the binary, restart the ACP client session or restart Zed first so the client respawns the updated command target.
+
+1. Restart the ACP client session or restart Zed so the updated \`xsfire-camp\` binary is respawned.
+2. Run \`/setup\` and confirm setup wizard text + Plan surface appears.
+3. Ask ACP to output two local references in one reply:
+   - a markdown link to a known source/doc file in this workspace; confirm ACP renders it as a \`file:///...\` link and clicking opens the intended file.
+   - a markdown link to a known raw executable artifact (for example \`target/release/<binary>\`); confirm ACP renders it as non-clickable code text like \`name: \`/abs/path\`\` instead of a clickable file link, so no macOS \`-50\` dialog appears.
 4. While the task is still running, confirm ACP shows live plan progress in at least one visible surface:
    - Zed: Plan panel rows update immediately.
    - Non-Zed ACP client: agent text includes \`Plan update: ...\`, \`Current: ...\`, and optional \`Note: ...\`.
-5. Run \`/monitor\` and confirm output includes:
-   - \`Task monitoring: orchestration=..., monitor=..., vector_checks=...\`
-   - \`Task queue: ...\`
-6. Run \`/vector\` and confirm the same Plan verify step becomes completed.
-7. Finish a prompt that triggers at least one tool call or exec step, wait for the final \`completed\` message, and confirm ACP leaves processing state promptly instead of spinning indefinitely.
-8. Open Config Options and change one option among:
+5. Open Config Options and change one option among:
    - Model / Reasoning Effort / Approval Preset
    - Task Orchestration / Task Monitoring / Progress Vector Checks
    Confirm Plan progress updates immediately.
-9. Set \`Task Orchestration\` to \`sequential\`, start one task, then send another prompt.
+6. Finish a prompt that triggers at least one tool call or exec step, wait for the final \`completed\` message, and confirm ACP leaves processing state promptly instead of spinning indefinitely.
+7. Set \`Task Orchestration\` to \`sequential\`, start one task, then send another prompt.
    Confirm sequential wait guidance appears instead of submitting a parallel task.
-10. Inspect logs:
+8. Inspect logs:
    - \`logs/codex_chats/.../*.md\` contains Plan/ToolCall/RequestPermission traces.
    - Optional: \`ACP_HOME/sessions/<id>/canonical.jsonl\` contains \`acp.plan\` updates.
+
+## Non-fatal warnings (separated from result)
+
+$WARNINGS_SECTION
 
 ## Result summary
 

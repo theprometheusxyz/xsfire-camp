@@ -253,3 +253,106 @@ impl LocalSpawner {
             .expect("Thread with LocalSet has shut down.");
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{AcpFs, LocalSpawner};
+    use agent_client_protocol::{ClientCapabilities, FileSystemCapability, SessionId};
+    use codex_apply_patch::Fs as ApplyPatchFs;
+    use std::{
+        collections::HashMap,
+        fs,
+        path::PathBuf,
+        sync::{Arc, Mutex},
+    };
+    use uuid::Uuid;
+
+    struct TempDirGuard {
+        path: PathBuf,
+    }
+
+    impl TempDirGuard {
+        fn new(prefix: &str) -> Self {
+            let path = std::env::temp_dir().join(format!("{prefix}-{}", Uuid::new_v4()));
+            fs::create_dir_all(&path).expect("failed to create temp dir");
+            Self { path }
+        }
+
+        fn path(&self) -> &std::path::Path {
+            &self.path
+        }
+    }
+
+    impl Drop for TempDirGuard {
+        fn drop(&mut self) {
+            let _cleanup_result = fs::remove_dir_all(&self.path);
+        }
+    }
+
+    fn build_fs(client_capabilities: ClientCapabilities, root: &std::path::Path) -> AcpFs {
+        let session_id = SessionId::new(format!("local-spawner-test-{}", Uuid::new_v4()));
+        let session_roots = Arc::new(Mutex::new(HashMap::from([(
+            session_id.clone(),
+            root.to_path_buf(),
+        )])));
+        AcpFs::new(
+            session_id,
+            Arc::new(Mutex::new(client_capabilities)),
+            LocalSpawner::new(),
+            session_roots,
+        )
+    }
+
+    #[test]
+    fn acp_fs_denies_out_of_root_reads_and_writes_when_client_fs_is_available() {
+        let root = TempDirGuard::new("xsfire-camp-root");
+        let outside = TempDirGuard::new("xsfire-camp-outside");
+        let outside_file = outside.path().join("outside.txt");
+        fs::write(&outside_file, "outside").expect("failed to write outside file");
+
+        let acp_fs = build_fs(
+            ClientCapabilities::new().fs(FileSystemCapability::new()
+                .read_text_file(true)
+                .write_text_file(true)),
+            root.path(),
+        );
+
+        let read_error = ApplyPatchFs::read_to_string(&acp_fs, &outside_file)
+            .expect_err("expected out-of-root read to be denied");
+        assert_eq!(read_error.kind(), std::io::ErrorKind::PermissionDenied);
+        assert!(
+            read_error.to_string().contains("outside session root"),
+            "unexpected read error: {read_error}"
+        );
+
+        let write_error = ApplyPatchFs::write(&acp_fs, &outside_file, b"mutated")
+            .expect_err("expected out-of-root write to be denied");
+        assert_eq!(write_error.kind(), std::io::ErrorKind::PermissionDenied);
+        assert!(
+            write_error.to_string().contains("outside session root"),
+            "unexpected write error: {write_error}"
+        );
+    }
+
+    #[test]
+    fn acp_fs_falls_back_to_local_fs_when_client_fs_capability_is_disabled() {
+        let root = TempDirGuard::new("xsfire-camp-root");
+        let outside = TempDirGuard::new("xsfire-camp-outside");
+        let outside_file = outside.path().join("outside.txt");
+        fs::write(&outside_file, "outside").expect("failed to write outside file");
+
+        let acp_fs = build_fs(ClientCapabilities::new(), root.path());
+
+        let contents = ApplyPatchFs::read_to_string(&acp_fs, &outside_file)
+            .expect("expected local fs fallback read to succeed");
+        assert_eq!(contents, "outside");
+
+        let rewritten = outside.path().join("rewritten.txt");
+        ApplyPatchFs::write(&acp_fs, &rewritten, b"rewritten")
+            .expect("expected local fs fallback write to succeed");
+        assert_eq!(
+            fs::read_to_string(&rewritten).expect("failed to read rewritten file"),
+            "rewritten"
+        );
+    }
+}

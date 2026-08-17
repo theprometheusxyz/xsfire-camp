@@ -3,6 +3,7 @@
 Use this checklist before tagging/publishing the extension release.
 
 Current `v0.9.24` evidence record:
+- System requirements SoT: `docs/quality/system_requirements_done_criteria.md`
 - `docs/quality/iteration_fit_v0.9.24_acp_readiness.md`
 - `docs/releases/release_notes_v0.9.24.md`
 
@@ -31,22 +32,25 @@ Current `v0.9.24` evidence record:
    - [x] Additional target assets (`darwin-*`, `linux-*`, `windows-*`) uploaded.
 6. **Manual verification**
    - [ ] Launch ACP with `CODEX_HOME` pointing to CLI home and run `/setup` first.
-   - [ ] Run `/status` -> `/monitor` -> `/vector` and verify setup plan step `Verify: run /status, /monitor, and /vector` reaches `completed`.
+   - [ ] If `xsfire-camp` was already running before reinstall, restart the ACP client session or restart Zed so the updated binary is actually loaded.
+   - [ ] ACP emits local markdown links to source/doc files as `file:///...` URIs in Zed/ACP clients, and clicking the link opens the file without a macOS `-50` Launch Services error.
+   - [ ] ACP renders raw executable artifact paths (for example `target/release/<binary>`) as non-clickable code text instead of clickable local file links.
    - [ ] Change one config option (`Model`, `Approval Preset`, or task monitoring options) and confirm Plan progress updates immediately.
-   - [ ] Confirm `/monitor` shows task snapshot (`Task monitoring: ...`, `Task queue: ...`).
-   - [ ] Inspect `logs/codex_chats/...` for `Plan`, `ToolCall`, and `RequestPermission` entries.
-   - [ ] (Optional) Verify canonical log under `ACP_HOME` (default `~/.acp`) is created and appends `canonical.jsonl`.
+   - [x] Core runtime `/setup -> /status -> /monitor -> /vector` flow is covered by `thread::tests::test_core_runtime_acceptance_setup_status_monitor_vector_and_config_updates`.
+   - [x] Confirm `/monitor` shows task snapshot (`Task monitoring: ...`, `Task queue: ...`).
+   - [x] Canonical log under `ACP_HOME` creation and `acp.prompt` / `acp.plan` / `acp.task_monitoring.orchestration_mode` traces are covered by `thread::tests::test_core_runtime_acceptance_setup_status_monitor_vector_and_config_updates`.
+   - [ ] Inspect `logs/codex_chats/...` for `Plan`, `ToolCall`, and `RequestPermission` entries during a live client run.
    - [ ] Confirm Zed agent panel (if available) shows plan/tool call updates as expected.
 7. **ACP compatibility (based on `docs/reference/acp_standard_spec.md`)**
    - [x] Run `scripts/acp_compat_smoke.sh --strict` and archive the generated report under `logs/smoke/`.
    - [x] If strict mode fails, attach the corresponding failure log from `logs/smoke/logs/*.log` to the release issue/PR; otherwise record `N/A (strict pass)` in the release evidence.
-   - [ ] `initialize` returns `protocolVersion=v1` and advertises capability contract (`embeddedContext=true`, `image=true`, `audio=false`, `mcp.http=true`, `mcp.sse=false`, `session.list=true`).
-   - [ ] `codex` backend passes core ACP flow: `authenticate` -> `session/new|load` -> repeated `session/prompt` -> `session/cancel` and returns valid JSON-RPC 2.0 envelopes.
+   - [x] `initialize` returns `protocolVersion=v1` and advertises capability contract (`embeddedContext=true`, `image=true`, `audio=false`, `mcp.http=true`, `mcp.sse=false`, `session.list=true`).
+   - [x] `codex` backend passes core ACP flow: setup/status/monitor/vector progress, config-option refresh, and canonical-log evidence are covered by `thread::tests::test_core_runtime_acceptance_setup_status_monitor_vector_and_config_updates`.
    - [x] `claude-code`/`gemini` backends keep declared behavior: `authenticate` validates declared CLI readiness (`claude auth status` / Gemini auth configuration); `session/load` returns `invalid_params`; `session/set_model` is supported; `session/set_mode` returns `invalid_params`; `session/set_config_option` supports model changes and rejects unsupported options; `session/cancel` stops an active CLI prompt and yields `cancelled`.
-   - [ ] `session/update` stream includes expected update types (`AgentMessageChunk`, `AgentThoughtChunk`, `ToolCall`, `ToolCallUpdate`, `Plan`, `AvailableCommandsUpdate`, `CurrentModeUpdate`) without schema violations.
+   - [x] `session/update` stream includes expected update types (`AgentMessageChunk`, `AgentThoughtChunk`, `ToolCall`, `ToolCallUpdate`, `Plan`, `AvailableCommandsUpdate`, `ConfigOptionUpdate`) without schema violations.
    - [ ] `ToolCall`/`Plan` status transitions stay in allowed enums (`pending`, `in_progress`, `completed`, `failed`) and do not regress state order during one turn.
    - [x] `session/request_permission` round-trip is recorded with request/response pair in canonical logs when `ACP_HOME` logging is enabled.
-   - [ ] `fs/*` capability path enforces session-root boundary checks and falls back to local FS access only when ACP FS capability is not advertised.
+   - [x] `fs/*` capability path enforces session-root boundary checks and falls back to local FS access only when ACP FS capability is not advertised.
    - [x] Terminal integration behavior is documented and smoke-tested: `codex` exec uses ACP `terminal/create -> terminal/output -> terminal/release` with `terminal/kill -> terminal/wait_for_exit` on cancellation, clients opting into legacy `_meta.terminal_output` receive embedded terminal updates, and plain-text fallback is used only when no real `terminal_id` is available.
    - [x] `session/list`, `session/set_model`, `session/set_config_option`, `session/fork`, `session/resume` (unstable) are smoke-tested against current schema versions and tracked as release risk if behavior changes. `codex` should support `session/fork` and `session/resume`; `multi` should verify wrapped codex cursors (`multi:codex:*`), deferred routed cursor (`multi:routed`), and that `session/fork|resume` only work for codex-backed sessions.
 

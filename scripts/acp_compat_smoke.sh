@@ -46,17 +46,29 @@ done
 
 mkdir -p "$REPORT_DIR" "$LOG_DIR"
 
+export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
+
 STATIC_FAILURES=0
 TEST_FAILURES=0
 declare -a STATIC_LINES
 declare -a TEST_LINES
 declare -a DETAIL_LINES
 
+search_pattern() {
+  local pattern="$1"
+  local file="$2"
+  if command -v rg >/dev/null 2>&1; then
+    rg -n --no-messages -- "$pattern" "$file" >/dev/null 2>&1
+  else
+    grep -qE -- "$pattern" "$file" >/dev/null 2>&1
+  fi
+}
+
 run_rg_present() {
   local label="$1"
   local pattern="$2"
   local file="$3"
-  if (cd "$ROOT_DIR" && rg -n --no-messages -- "$pattern" "$file" >/dev/null); then
+  if (cd "$ROOT_DIR" && search_pattern "$pattern" "$file"); then
     STATIC_LINES+=("- ${label}: pass")
   else
     STATIC_LINES+=("- ${label}: fail")
@@ -69,7 +81,7 @@ run_rg_absent() {
   local label="$1"
   local pattern="$2"
   local file="$3"
-  if (cd "$ROOT_DIR" && rg -n --no-messages -- "$pattern" "$file" >/dev/null); then
+  if (cd "$ROOT_DIR" && search_pattern "$pattern" "$file"); then
     STATIC_LINES+=("- ${label}: fail")
     DETAIL_LINES+=("${label}: unexpected pattern '${pattern}' found in ${file}")
     STATIC_FAILURES=1

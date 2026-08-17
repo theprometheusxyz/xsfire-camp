@@ -10,6 +10,7 @@
 
 ## plans/
 - [roadmap.md](plans/roadmap.md): 중장기 로드맵
+- [goal_contract_20260810.md](plans/goal_contract_20260810.md): 현재 목표를 Must/Should/Non-Goal로 조건화한 스냅샷(roadmap.md + system_requirements_done_criteria.md 종합)
 - [orchestration_plan_backend_driver_setup_context.md](plans/orchestration_plan_backend_driver_setup_context.md): 백엔드 드라이버 오케스트레이션 계획
 - [next_cycle_execution_plan.md](plans/next_cycle_execution_plan.md): 다음 사이클 실행 계획
 - [release_plan_v0.9.4.md](plans/release_plan_v0.9.4.md): 릴리즈 실행 계획
@@ -33,6 +34,7 @@
 - [release_notes_v0.9.8.md](releases/release_notes_v0.9.8.md)
 
 ## quality/
+- [system_requirements_done_criteria.md](quality/system_requirements_done_criteria.md): 전체 기능 요구사항, 완료 기준, operator/runtime 게이트 정본
 - [qa_checklist.md](quality/qa_checklist.md): QA 체크리스트
 - [cross_environment_execution_protocol.md](quality/cross_environment_execution_protocol.md): Goal/Rubric/Iteration 고정 실행 프로토콜
 - [iteration_fit_template.md](quality/iteration_fit_template.md): fit_score, Context-Fit, Release/Feedback 반복 기록 템플릿
@@ -47,6 +49,9 @@
 ## reference/
 - [acp_standard_spec.md](reference/acp_standard_spec.md): ACP 표준 스펙과 xsfire-camp 기능 매핑
 - [codex_home_overview.md](reference/codex_home_overview.md): `CODEX_HOME` 구조/권한 설명
+- [codex_learning_structure_report_20260403.md](reference/codex_learning_structure_report_20260403.md): 로컬 `.codex` 학습 구조, 자동화, 건강상태 스냅샷 리포트
+- [xsfire_camp_global_learning_bridge_20260413.md](reference/xsfire_camp_global_learning_bridge_20260413.md): xsfire-camp 회고/추가 리서치의 전역 지식 정본 경로 브리지
+- [xsfire_camp_official_docs_bridge_20260413.md](reference/xsfire_camp_official_docs_bridge_20260413.md): xsfire-camp 관련 공식 매뉴얼/공식 명시 전역 정본 경로 브리지
 - [event_handling.md](reference/event_handling.md): 이벤트 -> ACP 출력 매핑
 
 ## zed/

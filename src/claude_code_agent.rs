@@ -176,8 +176,9 @@ impl ClaudeCodeDriver {
         let extra_args = Self::extra_args();
 
         let mut cmd = TokioCommand::new(&bin);
+        cmd.current_dir(&cwd);
         cmd.arg("--print");
-        cmd.arg("--cwd");
+        cmd.arg("--add-dir");
         cmd.arg(&cwd);
         if let Some(model) = model {
             cmd.arg("--model");
@@ -633,30 +634,38 @@ mod tests {
     }
 
     fn write_fake_claude_script(temp_dir: &Path) -> PathBuf {
+        let argv_log = temp_dir.join("argv.log");
         #[cfg(windows)]
         let script_path = temp_dir.join("claude.cmd");
         #[cfg(not(windows))]
         let script_path = temp_dir.join("claude");
 
         #[cfg(windows)]
-        let script = r#"@echo off
+        let script = format!(
+            r#"@echo off
+echo PWD=%CD% ARGV=%* >> "{argv_log}"
 if "%1"=="auth" if "%2"=="status" (
-  echo {"loggedIn": true}
+  echo {{"loggedIn": true}}
   exit /b 0
 )
-powershell -NoProfile -Command "Start-Sleep -Seconds 10; Write-Output 'fake claude output'"
+powershell -NoProfile -Command "Start-Sleep -Seconds 2; Write-Output 'fake claude output'"
 exit /b 0
-"#;
+"#,
+            argv_log = argv_log.display()
+        );
 
         #[cfg(not(windows))]
-        let script = r#"#!/bin/sh
+        let script = format!(
+            r#"#!/bin/sh
+printf 'PWD=%s ARGV=%s\n' "$(pwd)" "$*" >> "{argv_log}"
 if [ "$1" = "auth" ] && [ "$2" = "status" ]; then
-  printf '%s\n' '{"loggedIn": true}'
+  printf '%s\n' '{{"loggedIn": true}}'
   exit 0
 fi
-sleep 10
-printf '%s\n' 'fake claude output'
-"#;
+exec sleep 2
+"#,
+            argv_log = argv_log.display()
+        );
 
         fs::write(&script_path, script).unwrap();
         #[cfg(unix)]
@@ -704,10 +713,7 @@ printf '%s\n' 'fake claude output'
     #[allow(clippy::await_holding_lock)]
     #[tokio::test(flavor = "current_thread")]
     async fn authenticate_checks_claude_status() {
-        let _guard = crate::session_store::ENV_LOCK
-            .get_or_init(|| std::sync::Mutex::new(()))
-            .lock()
-            .unwrap();
+        let _guard = crate::session_store::lock_env();
         let _bin = install_fake_claude_bin();
 
         let driver = ClaudeCodeDriver::new();
@@ -720,10 +726,7 @@ printf '%s\n' 'fake claude output'
     #[allow(clippy::await_holding_lock)]
     #[tokio::test(flavor = "current_thread")]
     async fn cancel_stops_running_prompt() {
-        let _guard = crate::session_store::ENV_LOCK
-            .get_or_init(|| std::sync::Mutex::new(()))
-            .lock()
-            .unwrap();
+        let _guard = crate::session_store::lock_env();
         let _bin = install_fake_claude_bin();
 
         let driver = ClaudeCodeDriver::new();
@@ -769,6 +772,85 @@ printf '%s\n' 'fake claude output'
         let session = sessions.get(&session_id).unwrap();
         assert!(session.history.is_empty());
         assert!(session.active_prompt.is_none());
+    }
+
+    /// Regression test for a confirmed production bug: the real `claude` CLI
+    /// (verified against 2.1.226) rejects `--cwd` with `error: unknown option
+    /// '--cwd'`, which meant every real prompt through this driver failed.
+    /// The fake script here can't validate against the real CLI's flag
+    /// grammar, so instead it records the exact argv/cwd it was invoked with
+    /// and this test asserts on that record.
+    #[allow(clippy::await_holding_lock)]
+    #[tokio::test(flavor = "current_thread")]
+    async fn prompt_runs_child_with_current_dir_not_unknown_cwd_flag() {
+        let _guard = crate::session_store::lock_env();
+        let bin = install_fake_claude_bin();
+        let argv_log = bin.temp_dir.join("argv.log");
+
+        let driver = ClaudeCodeDriver::new();
+        let cwd = std::env::current_dir().unwrap();
+        let session = driver
+            .new_session(NewSessionRequest::new(cwd.clone()))
+            .await
+            .unwrap();
+        let session_id = session.session_id.clone();
+
+        // The fake script logs argv/cwd on its first line, then sleeps.
+        // `active_prompt` is set before the child is even spawned, so
+        // polling on it (like `cancel_stops_running_prompt` does) would race
+        // ahead of the script and kill it before the log line is written.
+        // Poll the log file itself instead, then cancel to avoid waiting
+        // out the full sleep.
+        let prompt = driver.prompt(PromptRequest::new(session_id.clone(), vec!["hello".into()]));
+        let cancel = async {
+            for _ in 0..200 {
+                let logged = fs::read_to_string(&argv_log)
+                    .map(|s| !s.trim().is_empty())
+                    .unwrap_or(false);
+                if logged {
+                    break;
+                }
+                tokio::time::sleep(Duration::from_millis(20)).await;
+            }
+            driver
+                .cancel(CancelNotification::new(session_id.clone()))
+                .await
+                .unwrap();
+        };
+
+        let (response, ()) = tokio::time::timeout(Duration::from_secs(5), async {
+            tokio::join!(prompt, cancel)
+        })
+        .await
+        .expect("prompt should stop after cancel");
+        assert_eq!(response.unwrap().stop_reason, StopReason::Cancelled);
+
+        let logged = fs::read_to_string(&argv_log).unwrap_or_default();
+        assert!(
+            !logged.contains("--cwd"),
+            "argv must not contain the unsupported --cwd flag: {logged}"
+        );
+        assert!(
+            logged.contains("--print"),
+            "argv must contain --print: {logged}"
+        );
+        assert!(
+            logged.contains("--add-dir"),
+            "argv must contain --add-dir for session-root access: {logged}"
+        );
+
+        let logged_pwd = logged
+            .lines()
+            .next()
+            .and_then(|line| line.strip_prefix("PWD="))
+            .and_then(|rest| rest.split(" ARGV=").next())
+            .map(PathBuf::from)
+            .expect("fake script should have logged PWD=...");
+        assert_eq!(
+            fs::canonicalize(&logged_pwd).unwrap(),
+            fs::canonicalize(&cwd).unwrap(),
+            "child process cwd must match the session cwd"
+        );
     }
 
     #[tokio::test(flavor = "current_thread")]

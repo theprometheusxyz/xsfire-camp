@@ -122,8 +122,10 @@
 - `ToolCall`, `ToolCallUpdate`
 - `Plan`
 - `AvailableCommandsUpdate`
-- `CurrentModeUpdate`
 - `ConfigOptionUpdate` (unstable session config option 사용 시)
+
+별도 mode 전용 업데이트 타입은 현재 `xsfire-camp`가 적극적으로 송신하지 않습니다.
+현재 모드/설정 변화는 `ConfigOptionUpdate`, status text, plan progress update로 노출합니다.
 
 이벤트 매핑 상세는 `docs/reference/event_handling.md`를 정본으로 사용합니다.
 
