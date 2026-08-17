@@ -5,3 +5,4 @@ npm-packages
 logs
 .serena/
 .codex_tmp/
+runs/

@@ -1,0 +1,374 @@
+{
+  "IdentityInsightHermits": {
+    "path": "/Users/g/.codex-relocated/skills/IdentityInsightHermits",
+    "mtime": 1774095746.5643163
+  },
+  "_packages": {
+    "path": "/Users/g/.codex-relocated/skills/_packages",
+    "mtime": 1774095746.5647762
+  },
+  "apply-env-ui-config": {
+    "path": "/Users/g/.codex-relocated/skills/apply-env-ui-config",
+    "mtime": 1774095746.5651417
+  },
+  "apps-sdk-ize": {
+    "path": "/Users/g/.codex-relocated/skills/apps-sdk-ize",
+    "mtime": 1774095746.56563
+  },
+  "apps-sdk-pro": {
+    "path": "/Users/g/.codex-relocated/skills/apps-sdk-pro",
+    "mtime": 1774095746.566818
+  },
+  "appwrite-cloud-ops": {
+    "path": "/Users/g/.codex-relocated/skills/appwrite-cloud-ops",
+    "mtime": 1774095746.5672433
+  },
+  "appwrite-sms-sender": {
+    "path": "/Users/g/.codex-relocated/skills/appwrite-sms-sender",
+    "mtime": 1774095746.5679774
+  },
+  "atlas-debug-launcher": {
+    "path": "/Users/g/.codex-relocated/skills/atlas-debug-launcher",
+    "mtime": 1774095746.5689182
+  },
+  "ax-ndm-unfolding": {
+    "path": "/Users/g/.codex-relocated/skills/ax-ndm-unfolding",
+    "mtime": 1772645471.0
+  },
+  "behavioral-ia": {
+    "path": "/Users/g/.codex-relocated/skills/behavioral-ia",
+    "mtime": 1774095746.5697672
+  },
+  "bizAgent": {
+    "path": "/Users/g/.codex-relocated/skills/bizAgent",
+    "mtime": 1774095746.5704732
+  },
+  "build-concept-map": {
+    "path": "/Users/g/.codex-relocated/skills/build-concept-map",
+    "mtime": 1772692001.0
+  },
+  "carbon-doc-builder": {
+    "path": "/Users/g/.codex-relocated/skills/carbon-doc-builder",
+    "mtime": 1774095746.5708568
+  },
+  "chatgpt-apps": {
+    "path": "/Users/g/.codex-relocated/skills/chatgpt-apps",
+    "mtime": 1774095746.5713172
+  },
+  "cloudflare-deploy": {
+    "path": "/Users/g/.codex-relocated/skills/cloudflare-deploy",
+    "mtime": 1774098500.2692056
+  },
+  "codex-chat-logger": {
+    "path": "/Users/g/.codex-relocated/skills/codex-chat-logger",
+    "mtime": 1774095746.5718048
+  },
+  "cogdevkit-mapper": {
+    "path": "/Users/g/.codex-relocated/skills/cogdevkit-mapper",
+    "mtime": 1774095746.5721135
+  },
+  "cognitive-content-rubric": {
+    "path": "/Users/g/.codex-relocated/skills/cognitive-content-rubric",
+    "mtime": 1772646364.0
+  },
+  "common": {
+    "path": "/Users/g/.codex-relocated/skills/common",
+    "mtime": 1774093452.012928
+  },
+  "concept-map-agent": {
+    "path": "/Users/g/.codex-relocated/skills/concept-map-agent",
+    "mtime": 1772691995.0
+  },
+  "consensus-grant-finder": {
+    "path": "/Users/g/.codex-relocated/skills/consensus-grant-finder",
+    "mtime": 1775048897.0035372
+  },
+  "convert-survey-template": {
+    "path": "/Users/g/.codex-relocated/skills/convert-survey-template",
+    "mtime": 1774095746.5732358
+  },
+  "creator-agent": {
+    "path": "/Users/g/.codex-relocated/skills/creator-agent",
+    "mtime": 1774095746.578529
+  },
+  "develop-web-game": {
+    "path": "/Users/g/.codex-relocated/skills/develop-web-game",
+    "mtime": 1774098500.2757483
+  },
+  "developer-agent": {
+    "path": "/Users/g/.codex-relocated/skills/developer-agent",
+    "mtime": 1774539168.5385246
+  },
+  "doc": {
+    "path": "/Users/g/.codex-relocated/skills/doc",
+    "mtime": 1774095746.5801058
+  },
+  "doc-converter": {
+    "path": "/Users/g/.codex-relocated/skills/doc-converter",
+    "mtime": 1774095746.5794775
+  },
+  "document-pattern-library": {
+    "path": "/Users/g/.codex-relocated/skills/document-pattern-library",
+    "mtime": 1772682659.0
+  },
+  "dokploy-api": {
+    "path": "/Users/g/.codex-relocated/skills/dokploy-api",
+    "mtime": 1774095746.5806792
+  },
+  "dokploy-ops": {
+    "path": "/Users/g/.codex-relocated/skills/dokploy-ops",
+    "mtime": 1774095746.5809295
+  },
+  "ffit-automation": {
+    "path": "/Users/g/.codex-relocated/skills/ffit-automation",
+    "mtime": 1774095746.5815141
+  },
+  "ffit-session-hooks": {
+    "path": "/Users/g/.codex-relocated/skills/ffit-session-hooks",
+    "mtime": 1774095746.5818202
+  },
+  "firecrawl-jina-crawl": {
+    "path": "/Users/g/.codex-relocated/skills/firecrawl-jina-crawl",
+    "mtime": 1774095746.5820217
+  },
+  "fitcrafting-orchestration": {
+    "path": "/Users/g/.codex-relocated/skills/fitcrafting-orchestration",
+    "mtime": 1774095746.5822086
+  },
+  "frontend-skill": {
+    "path": "/Users/g/.codex-relocated/skills/frontend-skill",
+    "mtime": 1774098500.2818973
+  },
+  "gh-address-comments": {
+    "path": "/Users/g/.codex-relocated/skills/gh-address-comments",
+    "mtime": 1774095746.5824277
+  },
+  "gh-fix-ci": {
+    "path": "/Users/g/.codex-relocated/skills/gh-fix-ci",
+    "mtime": 1774095746.5826266
+  },
+  "hybrid-deck-factory": {
+    "path": "/Users/g/.codex-relocated/skills/hybrid-deck-factory",
+    "mtime": 1774095746.582833
+  },
+  "hybrid-slide-pipeline": {
+    "path": "/Users/g/.codex-relocated/skills/hybrid-slide-pipeline",
+    "mtime": 1774095746.5830364
+  },
+  "imagegen": {
+    "path": "/Users/g/.codex-relocated/skills/imagegen",
+    "mtime": 1774095746.5835152
+  },
+  "intentional-revenue-expert": {
+    "path": "/Users/g/.codex-relocated/skills/intentional-revenue-expert",
+    "mtime": 1774095746.5838559
+  },
+  "intro-slide-index-planner": {
+    "path": "/Users/g/.codex-relocated/skills/intro-slide-index-planner",
+    "mtime": 1774095746.5842214
+  },
+  "knowledge-ops": {
+    "path": "/Users/g/.codex-relocated/skills/knowledge-ops",
+    "mtime": 1774095746.588759
+  },
+  "ko-copy-editor": {
+    "path": "/Users/g/.codex-relocated/skills/ko-copy-editor",
+    "mtime": 1774095746.5892115
+  },
+  "learning-retrospective": {
+    "path": "/Users/g/.codex-relocated/skills/learning-retrospective",
+    "mtime": 1774095746.589965
+  },
+  "literature-review-helper": {
+    "path": "/Users/g/.codex-relocated/skills/literature-review-helper",
+    "mtime": 1775048897.0036156
+  },
+  "mermaid-journey": {
+    "path": "/Users/g/.codex-relocated/skills/mermaid-journey",
+    "mtime": 1774095746.5902584
+  },
+  "ndm-agents": {
+    "path": "/Users/g/.codex-relocated/skills/ndm-agents",
+    "mtime": 1774095746.5909452
+  },
+  "netlify-deploy": {
+    "path": "/Users/g/.codex-relocated/skills/netlify-deploy",
+    "mtime": 1774098500.2880275
+  },
+  "notion-knowledge-capture": {
+    "path": "/Users/g/.codex-relocated/skills/notion-knowledge-capture",
+    "mtime": 1774095746.591324
+  },
+  "notion-meeting-intelligence": {
+    "path": "/Users/g/.codex-relocated/skills/notion-meeting-intelligence",
+    "mtime": 1774095746.5916495
+  },
+  "notion-research-documentation": {
+    "path": "/Users/g/.codex-relocated/skills/notion-research-documentation",
+    "mtime": 1774095746.591991
+  },
+  "notion-spec-to-implementation": {
+    "path": "/Users/g/.codex-relocated/skills/notion-spec-to-implementation",
+    "mtime": 1774095746.5923407
+  },
+  "openai-docs": {
+    "path": "/Users/g/.codex-relocated/skills/openai-docs",
+    "mtime": 1774095746.5927172
+  },
+  "openclaw-documentation-rubric": {
+    "path": "/Users/g/.codex-relocated/skills/openclaw-documentation-rubric",
+    "mtime": 1772692918.0
+  },
+  "ops-guardian": {
+    "path": "/Users/g/.codex-relocated/skills/ops-guardian",
+    "mtime": 1773820032.0761096
+  },
+  "particle-map-kit": {
+    "path": "/Users/g/.codex-relocated/skills/particle-map-kit",
+    "mtime": 1774095746.5937
+  },
+  "particleize-md": {
+    "path": "/Users/g/.codex-relocated/skills/particleize-md",
+    "mtime": 1774095746.594167
+  },
+  "pattern-retry-ops": {
+    "path": "/Users/g/.codex-relocated/skills/pattern-retry-ops",
+    "mtime": 1774095746.5944812
+  },
+  "pattern-state-ops": {
+    "path": "/Users/g/.codex-relocated/skills/pattern-state-ops",
+    "mtime": 1774095746.594848
+  },
+  "pdf": {
+    "path": "/Users/g/.codex-relocated/skills/pdf",
+    "mtime": 1774095746.595119
+  },
+  "playwright": {
+    "path": "/Users/g/.codex-relocated/skills/playwright",
+    "mtime": 1774095746.5959427
+  },
+  "playwright-interactive": {
+    "path": "/Users/g/.codex-relocated/skills/playwright-interactive",
+    "mtime": 1774095746.595579
+  },
+  "postiz-docs-crawler": {
+    "path": "/Users/g/.codex-relocated/skills/postiz-docs-crawler",
+    "mtime": 1774095746.5962644
+  },
+  "preflight-appwrite": {
+    "path": "/Users/g/.codex-relocated/skills/preflight-appwrite",
+    "mtime": 1774095746.5965736
+  },
+  "projects": {
+    "path": "/Users/g/.codex-relocated/skills/projects",
+    "mtime": 1774791496.6235387
+  },
+  "quality-gate": {
+    "path": "/Users/g/.codex-relocated/skills/quality-gate",
+    "mtime": 1774539229.8598769
+  },
+  "recommended-reading-list": {
+    "path": "/Users/g/.codex-relocated/skills/recommended-reading-list",
+    "mtime": 1775048621.05848
+  },
+  "render-deploy": {
+    "path": "/Users/g/.codex-relocated/skills/render-deploy",
+    "mtime": 1774098840.1675282
+  },
+  "resource-preprocess-guardian": {
+    "path": "/Users/g/.codex-relocated/skills/resource-preprocess-guardian",
+    "mtime": 1774095746.7000012
+  },
+  "retrospective-notes": {
+    "path": "/Users/g/.codex-relocated/skills/retrospective-notes",
+    "mtime": 1774095746.7002246
+  },
+  "runcook-fan-conceptmap": {
+    "path": "/Users/g/.codex-relocated/skills/runcook-fan-conceptmap",
+    "mtime": 1774095746.7005045
+  },
+  "screenshot": {
+    "path": "/Users/g/.codex-relocated/skills/screenshot",
+    "mtime": 1774095746.7008896
+  },
+  "security-best-practices": {
+    "path": "/Users/g/.codex-relocated/skills/security-best-practices",
+    "mtime": 1774095746.7012649
+  },
+  "security-ownership-map": {
+    "path": "/Users/g/.codex-relocated/skills/security-ownership-map",
+    "mtime": 1774095746.701619
+  },
+  "security-threat-model": {
+    "path": "/Users/g/.codex-relocated/skills/security-threat-model",
+    "mtime": 1774095746.7021055
+  },
+  "serp-rank-monitor": {
+    "path": "/Users/g/.codex-relocated/skills/serp-rank-monitor",
+    "mtime": 1774381231.565014
+  },
+  "shared-learning-log": {
+    "path": "/Users/g/.codex-relocated/skills/shared-learning-log",
+    "mtime": 1774095746.7027376
+  },
+  "skills-link-guardian": {
+    "path": "/Users/g/.codex-relocated/skills/skills-link-guardian",
+    "mtime": 1772716179.0
+  },
+  "slides": {
+    "path": "/Users/g/.codex-relocated/skills/slides",
+    "mtime": 1774098500.2939699
+  },
+  "sora": {
+    "path": "/Users/g/.codex-relocated/skills/sora",
+    "mtime": 1774095746.7032971
+  },
+  "sot-archive-derived-guardian": {
+    "path": "/Users/g/.codex-relocated/skills/sot-archive-derived-guardian",
+    "mtime": 1774095746.7036855
+  },
+  "speech": {
+    "path": "/Users/g/.codex-relocated/skills/speech",
+    "mtime": 1774095746.704062
+  },
+  "spreadsheet": {
+    "path": "/Users/g/.codex-relocated/skills/spreadsheet",
+    "mtime": 1774095746.7044024
+  },
+  "structure-management": {
+    "path": "/Users/g/.codex-relocated/skills/structure-management",
+    "mtime": 1774095746.7046537
+  },
+  "transcribe": {
+    "path": "/Users/g/.codex-relocated/skills/transcribe",
+    "mtime": 1774095746.7051249
+  },
+  "visual-judgement-rubric": {
+    "path": "/Users/g/.codex-relocated/skills/visual-judgement-rubric",
+    "mtime": 1775048897.0037038
+  },
+  "vlp-crawl-agent": {
+    "path": "/Users/g/.codex-relocated/skills/vlp-crawl-agent",
+    "mtime": 1774095746.7055345
+  },
+  "vlp-segment-agent": {
+    "path": "/Users/g/.codex-relocated/skills/vlp-segment-agent",
+    "mtime": 1774095746.7057385
+  },
+  "work-orchestration": {
+    "path": "/Users/g/.codex-relocated/skills/work-orchestration",
+    "mtime": 1774539190.0633984
+  },
+  "worklog-agent": {
+    "path": "/Users/g/.codex-relocated/skills/worklog-agent",
+    "mtime": 1774095746.7080898
+  },
+  "writer-agent": {
+    "path": "/Users/g/.codex-relocated/skills/writer-agent",
+    "mtime": 1774095746.709445
+  },
+  "yeet": {
+    "path": "/Users/g/.codex-relocated/skills/yeet",
+    "mtime": 1774095746.7098217
+  }
+}
