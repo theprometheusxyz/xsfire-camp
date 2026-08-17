@@ -7246,10 +7246,12 @@ mod tests {
         old: Option<String>,
     }
 
+    #[allow(dead_code)]
     struct TempExecutableFixture {
         path: PathBuf,
     }
 
+    #[allow(dead_code)]
     impl TempExecutableFixture {
         fn new_mach_o() -> Self {
             let path =
@@ -7262,6 +7264,7 @@ mod tests {
             self.path.to_string_lossy().into_owned()
         }
     }
+
 
     impl EnvVarRestore {
         fn set(key: &str, value: Option<&str>) -> Self {
