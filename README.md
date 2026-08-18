@@ -39,29 +39,38 @@ Zed나 에디터 대화창에서 `/backend gemini` 또는 `/backend codex`를 �
 
 ## 🚀 60초 초간단 시작하기 (Quick Start)
 
-### 1단계: 설치하기 (원하는 방식을 고르세요)
-
-#### 💡 [방법 A] 가장 추천: 명령어 한 줄로 자동 설치
-터미널을 열고 아래 명령어를 붙여넣으면 즉시 설치됩니다.
+### 1단계: 올인원 원클릭 자동 설치 (추천)
+바이너리 빌드와 **Antigravity, Zed, VS Code 계열(Cursor, Windsurf)** 에디터 자동 설정을 한 번에 완료합니다:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/theprometheusxyz/xsfire-camp/main/scripts/build_and_install.sh | bash
+# 로컬 저장소에서 통합 설치 실행
+./scripts/install_all.sh
 ```
 
-#### 📦 [방법 B] NPM으로 설치하기
-Node.js가 설치되어 있다면 NPM으로 편리하게 글로벌 설치할 수 있습니다.
-
+또는 원격 스크립트로 한 줄 설치:
 ```bash
-npm install -g @theprometheusxyz/xsfire-camp@latest
+curl -fsSL https://raw.githubusercontent.com/theprometheusxyz/xsfire-camp/main/scripts/install_all.sh | bash
 ```
 
 ---
 
-### 2단계: Zed IDE에 등록하기
+### 2단계: 에디터별 자동/수동 설정 확인
 
-1. Zed IDE를 실행하고 **`Cmd + ,`** 키를 눌러 설정(`settings.json`)을 엽니다.
-2. 아래 내용을 복사해서 `"agent_servers"` 항목에 추가하세요:
+`install_all.sh` 실행 시 아래 3대 에디터 환경이 자동으로 감지되고 등록됩니다. 필요한 경우 개별 설정도 가능합니다:
 
+#### 🪐 1. Antigravity.app & Antigravity IDE.app
+- **Antigravity.app (전역 런타임)**: `~/.gemini/config/plugins/xsfire-camp/` 및 전역 에이전트(`~/.gemini/config/agents/xsfire-camp-agent.md`), 전역 MCP 서버가 자동 등록됩니다.
+- **Antigravity IDE.app (IDE 에디터)**: `~/.gemini/antigravity-ide/plugins/` 및 `mcp_config.json`에 직접 바인딩되어 에디터 실행 시 즉시 감지됩니다.
+- **사용 방법**: 대화창에서 **`@xsfire-camp-agent`**를 멘션하거나, 자연어 및 슬래시 커맨드(`/backend <gemini|codex|claude-code>`)로 멀티 AI를 실시간 전환합니다.
+- **선택 설치**:
+  ```bash
+  ./scripts/install_all.sh antigravity       # Antigravity.app + Antigravity IDE.app 동시 설치
+  ./scripts/install_all.sh antigravity-app   # Antigravity.app 전용 설치
+  ./scripts/install_all.sh antigravity-ide   # Antigravity IDE.app 전용 설치
+  ```
+
+#### ⚡ 2. Zed IDE
+- `~/.config/zed/settings.json`의 `agent_servers`에 자동 등록됩니다:
 ```json
 {
   "agent_servers": {
@@ -73,17 +82,33 @@ npm install -g @theprometheusxyz/xsfire-camp@latest
   }
 }
 ```
+- 개별 설정: `python3 scripts/setup_editors.py --target zed`
+
+#### 💻 3. VS Code 기반 에디터 (VS Code, Cursor, Windsurf)
+- Cursor(`~/.cursor/mcp.json`), Windsurf(`~/.codeium/windsurf/mcp_config.json`), VS Code(Cline/Roo Code 등)에 MCP 서버로 자동 등록됩니다:
+```json
+{
+  "mcpServers": {
+    "xsfire-camp": {
+      "command": "xsfire-camp",
+      "args": ["--backend=multi"]
+    }
+  }
+}
+```
+- 개별 설정: `python3 scripts/setup_editors.py --target vscode`
 
 ---
 
 ### 3단계: 바로 사용해보기!
 
-1. Zed 우측의 AI 패널을 열고 에이전트 목록에서 **`xsfire-camp`**를 선택합니다.
+1. 에디터의 AI 대화창을 열고 에이전트 목록 또는 MCP 도구에서 **`xsfire-camp`**를 선택합니다.
 2. 대화창에 인사나 질문을 입력해 보세요.
-3. 다른 AI 엔진으로 바꾸고 싶다면 대화창에 아래 슬래시 커맨드를 입력하세요:
+3. 원하는 AI 엔진으로 자유롭게 전환하세요:
    - `/backend gemini` ➔ **Gemini AI로 전환**
    - `/backend codex` ➔ **Codex / ChatGPT 엔진으로 전환**
    - `/backend claude-code` ➔ **Claude Code 엔진으로 전환**
+   - `/backend multi` ➔ **통합 멀티 라우팅 모드**
 
 ---
 

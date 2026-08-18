@@ -7,3 +7,4 @@ logs
 .codex_tmp/
 runs/
 visual-authoring-runtime-receipt.json
+.agents/visual-authoring-runtime-receipt.json

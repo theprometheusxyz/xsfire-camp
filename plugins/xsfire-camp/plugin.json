@@ -1,0 +1,20 @@
+{
+  "name": "xsfire-camp",
+  "version": "0.1.0",
+  "description": "Zero-setup local AI bridge and orchestrator agent connecting Gemini, Codex, and Claude Code to your IDE.",
+  "author": {
+    "name": "xsfire-camp contributors"
+  },
+  "license": "MIT OR Apache-2.0",
+  "keywords": [
+    "xsfire-camp",
+    "acp",
+    "mcp",
+    "agent",
+    "orchestrator",
+    "multi-backend",
+    "gemini",
+    "codex",
+    "claude-code"
+  ]
+}

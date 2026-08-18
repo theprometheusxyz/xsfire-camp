@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "xsfire-camp": {
+      "command": "python3",
+      "args": [
+        "/Volumes/Extend/Projects/DevWorkspace/xsfire-camp/scripts/xsfire_mcp_server.py"
+      ]
+    }
+  }
+}

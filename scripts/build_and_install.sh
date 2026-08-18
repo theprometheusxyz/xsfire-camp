@@ -45,3 +45,8 @@ chmod +x "$TMP_PATH"
 mv -f "$TMP_PATH" "$INSTALL_PATH"
 
 echo "Installed: $INSTALL_PATH"
+
+if [[ "${SETUP_EDITORS:-0}" == "1" || "${1:-}" == "--setup-all" ]]; then
+  echo ""
+  python3 "$ROOT_DIR/scripts/setup_editors.py" --target all
+fi
