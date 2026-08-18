@@ -77,6 +77,15 @@ def get_binary_cmd() -> str:
     return str(binary_path) if binary_path.is_file() else "xsfire-camp"
 
 
+def get_python_cmd() -> str:
+    which = shutil.which("python3")
+    if which and Path(which).is_file():
+        return which
+    if Path("/usr/bin/python3").is_file():
+        return "/usr/bin/python3"
+    return sys.executable
+
+
 # ---------------------------------------------------------------------------
 # 1. Antigravity.app & Antigravity IDE.app Setup
 # ---------------------------------------------------------------------------
@@ -149,7 +158,7 @@ def setup_antigravity_core(repo_root: Path, dry_run: bool = False, uninstall: bo
     mcp_data = safe_load_json(mcp_config_path)
     mcp_servers = mcp_data.get("mcpServers", {})
     mcp_servers["xsfire-camp"] = {
-        "command": sys.executable,
+        "command": get_python_cmd(),
         "args": [str(mcp_server_script)]
     }
     mcp_data["mcpServers"] = mcp_servers
@@ -204,7 +213,7 @@ def setup_antigravity_ide(repo_root: Path, dry_run: bool = False, uninstall: boo
         mcp_data = safe_load_json(mcp_config_path)
         mcp_servers = mcp_data.get("mcpServers", {})
         mcp_servers["xsfire-camp"] = {
-            "command": sys.executable,
+            "command": get_python_cmd(),
             "args": [str(mcp_server_script)]
         }
         mcp_data["mcpServers"] = mcp_servers
